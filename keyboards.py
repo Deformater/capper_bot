@@ -1,4 +1,4 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from callbacks import CancelCallback, GamesCallback, GameCallback
 
 
@@ -11,21 +11,25 @@ def base_keyboard():
 
 
 def home_keyboard():
-    builder = InlineKeyboardBuilder()
-    
-    builder.button(text="Матчи", callback_data=GamesCallback())
+    builder = ReplyKeyboardBuilder()
 
-    # builder.attach(base_keyboard())
-    # builder.adjust(3, 1)
+    builder.button(text="⚽️Матчи")
+    builder.button(text="📈История ставок")
+    builder.button(text="🙍‍♂️Профиль")
+    builder.button(text="💬Чат")
+    builder.button(text="🗓Активный сезон")
+    builder.button(text="📝Условия")
+    builder.button(text="🏆Рейтинг")
+    builder.adjust(2, 2, 3)
 
     return builder.as_markup()
 
 
 def games_keyboard(games: list):
     builder = InlineKeyboardBuilder()
-    
+
     for game in games:
-        btn_text = f"{game.game_starts_at.strftime('%H:%M')}(МСК) {game.first_team_name} vs {game.second_team_name} {game.format} {'*' * game.hype}"
+        btn_text = f"{game.starts_at.strftime('%H:%M')}(МСК) {game.first_team_name} 🆚 {game.second_team_name} {game.format} {'*' * game.hype}"
         builder.button(
             text=btn_text,
             callback_data=GameCallback(game_uuid=game.uuid),
@@ -34,6 +38,7 @@ def games_keyboard(games: list):
     builder.attach(base_keyboard())
 
     return builder.as_markup()
+
 
 # def date_keyboard():
 #     builder = InlineKeyboardBuilder()

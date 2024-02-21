@@ -5,11 +5,19 @@ from enum import Enum
 
 class User(models.Model):
     tg_id = fields.BigIntField(unique=True, pk=True)
+    username = fields.CharField(80, null=False)
     score = fields.FloatField(default=0)
     balance = fields.FloatField(default=5000)
     bet_count = fields.IntField(default=0)
+    success_bet_count = fields.IntField(default=0)
     is_subscripe = fields.BooleanField(default=False)
     bets = fields.ReverseRelation["Bet"]
+
+    async def success_bet_persent(self) -> float:
+        if self.bet_count == 0:
+            return 0
+
+        return self.success_bet_count / self.bet_count * 100
 
     class Meta:
         table = "users"
@@ -37,8 +45,8 @@ class Game(models.Model):
     first_team_coefficient = fields.FloatField(null=False)
     second_team_coefficient = fields.FloatField(null=False)
     format = fields.CharField(max_length=10, null=False)
-    game_starts_at = fields.DatetimeField(null=False)
-    hype = fields.IntField(null=True)
+    starts_at = fields.DatetimeField(null=False)
+    hype = fields.IntField(null=False)
 
     class Meta:
         table = "games"

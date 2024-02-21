@@ -8,9 +8,9 @@ from aiogram.types import (
     CallbackQuery,
     ReplyKeyboardRemove,
     ErrorEvent,
-    ChatMemberLeft
+    ChatMemberLeft,
 )
-    
+
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
@@ -19,7 +19,7 @@ from keyboards import base_keyboard, home_keyboard, games_keyboard
 from callbacks import CancelCallback, GameCallback, GamesCallback
 from data.models import Game, User
 
-
+from utils import generate_rating_text
 import settings
 
 
@@ -42,12 +42,16 @@ class Form(StatesGroup):
 @dlg_router.message(CommandStart())
 async def command_start(message: Message) -> None:
 
-    user = await User.get_or_create(tg_id=message.chat.id)
+    user = await User.get_or_create(
+        tg_id=message.chat.id, username=message.chat.username
+    )
     user = user[0]
-    user_channel_status = await message.bot.get_chat_member(chat_id=settings.GROUP_NAME, user_id=message.chat.id)
-    user.is_subscripe = not (user_channel_status.status == 'left')
+    user_channel_status = await message.bot.get_chat_member(
+        chat_id=settings.GROUP_NAME, user_id=message.chat.id
+    )
+    user.is_subscripe = not (user_channel_status.status == "left")
     await user.save()
-    
+
     if user.is_subscripe:
         await message.answer(
             f"Вы подписаны на {settings.GROUP_NAME}",
@@ -58,6 +62,7 @@ async def command_start(message: Message) -> None:
             f"Вы не подписаны на группу {settings.GROUP_NAME}",
             reply_markup=ReplyKeyboardRemove(),
         )
+
 
 @dlg_router.message(Command("admin"))
 async def command_admin(message: Message, command: CommandObject) -> None:
@@ -82,26 +87,46 @@ async def command_admin(message: Message, command: CommandObject) -> None:
 #         await message.answer("Неверный формат ввода")
 
 
-# Game колбек
-@dlg_router.callback_query(GamesCallback.filter())
-async def laba_handler(
-    query: CallbackQuery, callback_data: GamesCallback
-) -> None:
+@dlg_router.message(F.text == "⚽️Матчи")
+async def games_handler(message: Message) -> None:
     games = await Game.all()
     today_games = []
     for game in games:
-        if game.game_starts_at.date() == datetime.date.today():
+        if game.starts_at.date() == datetime.date.today():
             today_games.append(game)
-    
-    
+
     if today_games:
-        await query.message.edit_text(
-            text=f'Интересные матчи сегодня:', reply_markup=games_keyboard(today_games)
+        await message.bot.send_message(
+            chat_id=message.chat.id,
+            text=f"Интересные матчи сегодня:",
+            reply_markup=games_keyboard(today_games),
         )
     else:
-        await query.message.edit_text(
-            text=f"Сегодня нет игр(", reply_markup=games_keyboard(today_games)
+        await message.bot.send_message(
+            chat_id=message.chat.id,
+            text=f"Сегодня нет игр(",
+            reply_markup=games_keyboard(today_games),
         )
+
+
+@dlg_router.message(F.text == "🏆Рейтинг")
+async def rating_handler(message: Message) -> None:
+    users = await User.all().order_by("-balance")
+    current_user = await User.get(tg_id=message.chat.id)
+    current_user_place = users.index(current_user) + 1
+
+    result_text = await generate_rating_text(
+        users=users[:5],
+        current_user=current_user,
+        current_user_place=current_user_place,
+        users_total=len(users),
+    )
+
+    await message.bot.send_message(
+        chat_id=message.chat.id,
+        text=result_text,
+        reply_markup=home_keyboard(),
+    )
 
 
 # @dlg_router.callback_query(CancelCallback.filter(), Form.date)
@@ -122,4 +147,3 @@ async def laba_handler(
 #     await query.message.edit_text(
 #         text=f"Выберите дату сдачи лабораторной", reply_markup=date_keyboard()
 #     )
-
