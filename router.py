@@ -15,8 +15,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
-from keyboards import base_keyboard, home_keyboard
-from callbacks import CancelCallback, GameCallback
+from keyboards import base_keyboard, home_keyboard, games_keyboard
+from callbacks import CancelCallback, GameCallback, GamesCallback
 from data.models import Game, User
 
 
@@ -43,19 +43,21 @@ class Form(StatesGroup):
 async def command_start(message: Message) -> None:
 
     user = await User.get_or_create(tg_id=message.chat.id)
+    user = user[0]
     user_channel_status = await message.bot.get_chat_member(chat_id=settings.GROUP_NAME, user_id=message.chat.id)
+    user.is_subscripe = not (user_channel_status.status == 'left')
+    await user.save()
     
-    if user_channel_status.status == 'left':
-        await message.answer(
-            f"Вы не подписаны на группу {settings.GROUP_NAME}",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-    else:
+    if user.is_subscripe:
         await message.answer(
             f"Вы подписаны на {settings.GROUP_NAME}",
             reply_markup=home_keyboard(),
         )
-
+    else:
+        await message.answer(
+            f"Вы не подписаны на группу {settings.GROUP_NAME}",
+            reply_markup=ReplyKeyboardRemove(),
+        )
 
 @dlg_router.message(Command("admin"))
 async def command_admin(message: Message, command: CommandObject) -> None:
@@ -80,27 +82,25 @@ async def command_admin(message: Message, command: CommandObject) -> None:
 #         await message.answer("Неверный формат ввода")
 
 
-# Лаба колбек
-@dlg_router.callback_query(GameCallback.filter())
+# Game колбек
+@dlg_router.callback_query(GamesCallback.filter())
 async def laba_handler(
-    query: CallbackQuery, callback_data: GameCallback
+    query: CallbackQuery, callback_data: GamesCallback
 ) -> None:
     games = await Game.all()
     today_games = []
     for game in games:
-        print(game.game_starts_at.date(), datetime.date.today())
         if game.game_starts_at.date() == datetime.date.today():
-            print(game)
-            today_games.append(f"{game.first_team_name} vs {game.second_team_name} {game.format}")
+            today_games.append(game)
     
-    result_text = "\n".join(today_games)
+    
     if today_games:
         await query.message.edit_text(
-            text=f'{result_text}', reply_markup=base_keyboard()
+            text=f'Интересные матчи сегодня:', reply_markup=games_keyboard(today_games)
         )
     else:
         await query.message.edit_text(
-            text=f"Сегодня нет игр(", reply_markup=base_keyboard()
+            text=f"Сегодня нет игр(", reply_markup=games_keyboard(today_games)
         )
 
 

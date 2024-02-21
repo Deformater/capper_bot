@@ -1,5 +1,6 @@
 from tortoise import fields
 from tortoise import models
+from enum import Enum
 
 
 class User(models.Model):
@@ -35,8 +36,9 @@ class Game(models.Model):
     second_team_name = fields.TextField(null=False)
     first_team_coefficient = fields.FloatField(null=False)
     second_team_coefficient = fields.FloatField(null=False)
-    format = fields.CharField(max_length=10, null=True)
+    format = fields.CharField(max_length=10, null=False)
     game_starts_at = fields.DatetimeField(null=False)
+    hype = fields.IntField(null=True)
 
     class Meta:
         table = "games"
