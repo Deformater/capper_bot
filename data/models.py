@@ -1,0 +1,42 @@
+from tortoise import fields
+from tortoise import models
+
+
+class User(models.Model):
+    tg_id = fields.BigIntField(unique=True, pk=True)
+    score = fields.FloatField(default=0)
+    balance = fields.FloatField(default=5000)
+    bet_count = fields.IntField(default=0)
+    is_subscripe = fields.BooleanField(default=False)
+    bets = fields.ReverseRelation["Bet"]
+
+    class Meta:
+        table = "users"
+
+
+class Bet(models.Model):
+    uuid = fields.UUIDField(unique=True, pk=True)
+    bet_result = fields.BooleanField(null=True)
+    user: fields.ForeignKeyRelation["User"] = fields.ForeignKeyField(
+        "models.User", related_name="bets", to_field="tg_id", on_delete=fields.CASCADE
+    )
+    game: fields.ForeignKeyRelation["Game"] = fields.ForeignKeyField(
+        "models.Game", related_name="bets", to_field="uuid", on_delete=fields.CASCADE
+    )
+    created_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "bets"
+
+
+class Game(models.Model):
+    uuid = fields.UUIDField(unique=True, pk=True)
+    first_team_name = fields.TextField(null=False)
+    second_team_name = fields.TextField(null=False)
+    first_team_coefficient = fields.FloatField(null=False)
+    second_team_coefficient = fields.FloatField(null=False)
+    format = fields.CharField(max_length=10, null=True)
+    game_starts_at = fields.DatetimeField(null=False)
+
+    class Meta:
+        table = "games"
