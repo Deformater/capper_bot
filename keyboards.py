@@ -59,6 +59,12 @@ def bet_keyboard(game: Game):
     return builder.as_markup()
 
 
+def chat_link_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Присоединиться к чату", url="https://t.me/+WkoR_WEMA9tlNTcy")
+    return builder.as_markup()
+
+
 # def date_keyboard():
 #     builder = InlineKeyboardBuilder()
 

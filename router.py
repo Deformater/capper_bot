@@ -15,7 +15,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
-from keyboards import bet_keyboard, home_keyboard, games_keyboard
+from keyboards import bet_keyboard, home_keyboard, games_keyboard, chat_link_keyboard
 from callbacks import BetCallback, CancelCallback, GameCallback
 from data.models import Bet, Game, User
 
@@ -189,6 +189,31 @@ async def process_name(message: Message, state: FSMContext) -> None:
         await message.answer(f"Вы успешно поставили на {data['bet']}")
     else:
         await message.answer("Неверный формат ввода")
+
+
+@dlg_router.message(F.text == "📝О боте")
+async def bot_info(message: Message) -> None:
+    await message.bot.send_message(
+        chat_id=message.chat.id,
+        text="""
+            В нашем боте каждый из участников может посоревноваться за призы(<b>250$</b> - 1 место, <b>100$ - 2 место</b>, <b>50$</b> - 3 место)
+
+            Все что вам нужно делать это ежедневно делать прогнозы в нашем боте на матчи DreamLeague S22, в итоге после финала турнира трое лучших прогнозистов смогут забрать свои призы!!
+
+            Отслеживать свое место на данный момент вы можете во вкладке '🏆Рейтинг', желаем удачи!
+            """,
+        parse_mode="HTML",
+        reply_markup=home_keyboard(),
+    )
+
+
+@dlg_router.message(F.text == "💬Чат")
+async def bot_info(message: Message):
+    await message.bot.send_message(
+        chat_id=message.chat.id,
+        text="Нажмите на кнопку ниже, чтобы присоединиться к нашему чату:",
+        reply_markup=chat_link_keyboard(),
+    )
 
 
 # @dlg_router.callback_query(CancelCallback.filter(), Form.date)
