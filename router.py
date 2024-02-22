@@ -9,6 +9,8 @@ from aiogram.types import (
     ReplyKeyboardRemove,
     ErrorEvent,
     ChatMemberLeft,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
 )
 
 from aiogram.fsm.context import FSMContext
@@ -127,6 +129,39 @@ async def rating_handler(message: Message) -> None:
         text=result_text,
         reply_markup=home_keyboard(),
     )
+
+
+@dlg_router.message(F.text == "📝О боте")
+async def bot_info(message: Message) -> None:
+    await message.bot.send_message(
+            chat_id=message.chat.id,
+            text="""
+            В нашем боте каждый из участников может посоревноваться за призы(<b>250$</b> - 1 место, <b>100$ - 2 место</b>, <b>50$</b> - 3 место)
+            
+            Все что вам нужно делать это ежедневно делать прогнозы в нашем боте на матчи DreamLeague S22, в итоге после финала турнира трое лучших прогнозистов смогут забрать свои призы!!
+            
+            Отслеживать свое место на данный момент вы можете во вкладке '🏆Рейтинг', желаем удачи!
+            """,
+            parse_mode='HTML',
+            reply_markup=home_keyboard(),
+    )
+    
+
+
+def chat_link_keyboard():
+    keyboard = InlineKeyboardMarkup()
+    url_button = InlineKeyboardButton(text="Присоединиться к чату", url="https://t.me/+WkoR_WEMA9tlNTcy")
+    keyboard.add(url_button)
+    return keyboard
+
+@dlg_router.message(F.text == "💬Чат")
+async def bot_info(message: Message):
+    await message.bot.send_message(
+        chat_id=message.chat.id,
+        text="Нажмите на кнопку ниже, чтобы присоединиться к нашему чату:",
+        reply_markup=chat_link_keyboard(), 
+    )
+    
 
 
 # @dlg_router.callback_query(CancelCallback.filter(), Form.date)
