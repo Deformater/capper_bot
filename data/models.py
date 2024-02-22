@@ -13,11 +13,17 @@ class User(models.Model):
     is_subscripe = fields.BooleanField(default=False)
     bets = fields.ReverseRelation["Bet"]
 
+    @property
     async def success_bet_persent(self) -> float:
         if self.bet_count == 0:
             return 0
 
         return self.success_bet_count / self.bet_count * 100
+
+    @property
+    async def place(self) -> int:
+        users = await User.all().order_by("-balance")
+        return users.index(self) + 1
 
     class Meta:
         table = "users"
@@ -25,7 +31,9 @@ class User(models.Model):
 
 class Bet(models.Model):
     uuid = fields.UUIDField(unique=True, pk=True)
-    bet_result = fields.BooleanField(null=True)
+    result = fields.BooleanField(null=True)
+    size = fields.FloatField(null=False)
+    team_name = fields.CharField(80, null=False)
     user: fields.ForeignKeyRelation["User"] = fields.ForeignKeyField(
         "models.User", related_name="bets", to_field="tg_id", on_delete=fields.CASCADE
     )

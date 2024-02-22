@@ -15,11 +15,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
-from keyboards import base_keyboard, home_keyboard, games_keyboard
-from callbacks import CancelCallback, GameCallback, GamesCallback
-from data.models import Game, User
+from keyboards import bet_keyboard, home_keyboard, games_keyboard
+from callbacks import BetCallback, CancelCallback, GameCallback
+from data.models import Bet, Game, User
 
-from utils import generate_rating_text
+from utils import (
+    generate_rating_text,
+    generate_profile_text,
+    generate_game_text,
+    validate_bet_size,
+)
 import settings
 
 
@@ -27,11 +32,7 @@ dlg_router = Router()
 
 
 class Form(StatesGroup):
-    name = State()
-    laba = State()
-    stream = State()
-    date = State()
-    action = State()
+    bet = State()
 
 
 # @dlg_router.error(ExceptionTypeFilter(KeyError), F.update.query.as_("query"))
@@ -77,16 +78,6 @@ async def command_admin(message: Message, command: CommandObject) -> None:
                     continue
 
 
-# @dlg_router.message(Form.name)
-# async def process_name(message: Message, state: FSMContext) -> None:
-#     if name_validation(message.text):
-#         await state.update_data(name=message.text.split())
-#         await state.set_state(Form.laba)
-#         await message.answer("Выберите предмет", reply_markup=laba_keyboard())
-#     else:
-#         await message.answer("Неверный формат ввода")
-
-
 @dlg_router.message(F.text == "⚽️Матчи")
 async def games_handler(message: Message) -> None:
     games = await Game.all()
@@ -127,6 +118,77 @@ async def rating_handler(message: Message) -> None:
         text=result_text,
         reply_markup=home_keyboard(),
     )
+
+
+@dlg_router.message(F.text == "🙍‍♂️Профиль")
+async def profile_handler(message: Message) -> None:
+    current_user = await User.get(tg_id=message.chat.id)
+
+    result_text = await generate_profile_text(
+        current_user=current_user,
+    )
+
+    await message.bot.send_message(
+        chat_id=message.chat.id,
+        text=result_text,
+        reply_markup=home_keyboard(),
+    )
+
+
+@dlg_router.callback_query(GameCallback.filter())
+async def game_handler(
+    query: CallbackQuery, callback_data: GameCallback, state: FSMContext
+) -> None:
+    uuid = callback_data.game_uuid
+    game = await Game.get(uuid=uuid)
+    result_text = "Хочешь сделать ставку?\n\n"
+    result_text += generate_game_text(game)
+    await query.message.edit_text(text=result_text, reply_markup=bet_keyboard(game))
+
+
+@dlg_router.callback_query(BetCallback.filter())
+async def bet_handler(
+    query: CallbackQuery, callback_data: BetCallback, state: FSMContext
+) -> None:
+    uuid = callback_data.game_uuid
+
+    await state.clear()
+    await state.set_state(Form.bet)
+    await state.update_data(
+        bet=callback_data.content,
+        game_uuid=str(uuid),
+        bet_content=callback_data.content,
+    )
+
+    game = await Game.get(uuid=uuid)
+
+    result_text = "Хочешь сделать ставку?\n\n"
+    result_text += generate_game_text(game) + "\n"
+    result_text += f"Ставка на победу {callback_data.content}\n\n"
+
+    user = await User.get(tg_id=query.message.chat.id)
+
+    result_text += f"Баланс {user.balance}💵\n"
+    result_text += f"Введи сумму ставки:"
+
+    await query.message.edit_text(text=result_text)
+
+
+@dlg_router.message(Form.bet)
+async def process_name(message: Message, state: FSMContext) -> None:
+    if (bet_size := validate_bet_size(message.text)) is not None:
+        data = await state.get_data()
+
+        user = await User.get(tg_id=message.chat.id)
+        game = await Game.get(uuid=data["game_uuid"])
+        team_name = data["bet_content"].split()[0]
+
+        await Bet.create(size=bet_size, user=user, game=game, team_name=team_name)
+        await state.clear()
+
+        await message.answer(f"Вы успешно поставили на {data['bet']}")
+    else:
+        await message.answer("Неверный формат ввода")
 
 
 # @dlg_router.callback_query(CancelCallback.filter(), Form.date)
