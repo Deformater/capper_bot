@@ -13,3 +13,7 @@ class GameCallback(CallbackData, prefix="game"):
 class BetCallback(CallbackData, prefix="bet"):
     game_uuid: UUID4
     content: str
+
+
+class MoreBetCallback(CallbackData, prefix="more_bet"):
+    bets_amount: int

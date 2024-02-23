@@ -1,5 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
-from callbacks import BetCallback, CancelCallback, GameCallback
+from callbacks import BetCallback, CancelCallback, GameCallback, MoreBetCallback
 from data.models import Game
 from utils import generate_game_text
 
@@ -62,6 +62,15 @@ def bet_keyboard(game: Game):
 def chat_link_keyboard():
     builder = InlineKeyboardBuilder()
     builder.button(text="Присоединиться к чату", url="https://t.me/+WkoR_WEMA9tlNTcy")
+    return builder.as_markup()
+
+
+def bet_history_keyboard(bets_amount):
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="Больше ставок",
+        callback_data=MoreBetCallback(bets_amount=bets_amount),
+    )
     return builder.as_markup()
 
 

@@ -15,8 +15,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
-from keyboards import bet_keyboard, home_keyboard, games_keyboard, chat_link_keyboard
-from callbacks import BetCallback, CancelCallback, GameCallback
+from keyboards import (
+    bet_history_keyboard,
+    bet_keyboard,
+    home_keyboard,
+    games_keyboard,
+    chat_link_keyboard,
+)
+from callbacks import BetCallback, CancelCallback, GameCallback, MoreBetCallback
 from data.models import Bet, Game, User
 
 from utils import (
@@ -24,7 +30,10 @@ from utils import (
     generate_profile_text,
     generate_game_text,
     validate_bet_size,
+    generate_bets_history_text,
 )
+
+from tortoise.query_utils import Prefetch
 import settings
 
 
@@ -41,7 +50,9 @@ class Form(StatesGroup):
 
 
 @dlg_router.message(CommandStart())
-async def command_start(message: Message) -> None:
+async def command_start(message: Message, state: FSMContext) -> None:
+
+    await state.clear()
 
     user = await User.get_or_create(
         tg_id=message.chat.id, username=message.chat.username
@@ -65,17 +76,16 @@ async def command_start(message: Message) -> None:
         )
 
 
-@dlg_router.message(Command("admin"))
-async def command_admin(message: Message, command: CommandObject) -> None:
-    if message.chat.id in settings.ADMIN_IDS:
-        chats = []
-        args = command.args
-        if args is not None:
-            for chat in chats:
-                try:
-                    await message.bot.send_message(chat.tg_id, args)
-                except TelegramForbiddenError:
-                    continue
+# @dlg_router.message(Command("admin"))
+# async def command_admin(message: Message, command: CommandObject) -> None:
+#     if message.chat.id not in settings.ADMIN_IDS:
+#         return
+
+#     await message.bot.send_message(
+#         chat_id=message.chat.id,
+#         text=f"Сегодня нет игр(",
+#         reply_markup=admin_keyboard(),
+#     )
 
 
 @dlg_router.message(F.text == "⚽️Матчи")
@@ -175,24 +185,76 @@ async def bet_handler(
 
 
 @dlg_router.message(Form.bet)
-async def process_name(message: Message, state: FSMContext) -> None:
+async def process_bet_size(message: Message, state: FSMContext) -> None:
     if (bet_size := validate_bet_size(message.text)) is not None:
         data = await state.get_data()
 
         user = await User.get(tg_id=message.chat.id)
         game = await Game.get(uuid=data["game_uuid"])
-        team_name = data["bet_content"].split()[0]
+        team_name, bet_coefficient = data["bet_content"].split(" - ")
 
-        await Bet.create(size=bet_size, user=user, game=game, team_name=team_name)
+        await Bet.create(
+            size=bet_size,
+            user=user,
+            game=game,
+            team_name=team_name,
+            bet_coefficient=bet_coefficient,
+        )
+        user.balance -= bet_size
+        user.bet_count += 1
+        await user.save()
+
         await state.clear()
 
-        await message.answer(f"Вы успешно поставили на {data['bet']}")
+        await message.answer(f"Вы успешно поставили на победу {data['bet']}")
     else:
         await message.answer("Неверный формат ввода")
 
 
+@dlg_router.message(F.text == "📈История ставок")
+async def bet_history_handler(message: Message):
+    user = await User.get(tg_id=message.chat.id).prefetch_related("bets")
+
+    if len(user.bets) == 0:
+        await message.bot.send_message(
+            chat_id=message.chat.id,
+            text="У вас пока нет ставок(",
+        )
+        return
+
+    result_text = "📈История ставок:\n\n"
+    result_text += await generate_bets_history_text(user.bets[:5])
+    await message.bot.send_message(
+        chat_id=message.chat.id,
+        text=result_text,
+        reply_markup=bet_history_keyboard(5),
+    )
+
+
+@dlg_router.callback_query(MoreBetCallback.filter())
+async def bet_history_handler(
+    query: CallbackQuery, callback_data: MoreBetCallback
+) -> None:
+    user = await User.get(tg_id=query.message.chat.id).prefetch_related(
+        Prefetch("bets", queryset=Bet.all().order_by("-created_at"))
+    )
+    result_text = "📈История ставок:\n\n"
+    result_text += await generate_bets_history_text(
+        user.bets[: callback_data.bets_amount]
+    )
+    if callback_data.bets_amount < 30 and callback_data.bets_amount < len(user.bets):
+        await query.message.edit_text(
+            text=result_text,
+            reply_markup=bet_history_keyboard(callback_data.bets_amount + 5),
+        )
+    else:
+        await query.message.edit_text(
+            text=result_text,
+        )
+
+
 @dlg_router.message(F.text == "📝О боте")
-async def bot_info(message: Message) -> None:
+async def bot_info_handler(message: Message) -> None:
     await message.bot.send_message(
         chat_id=message.chat.id,
         text="""
@@ -208,7 +270,7 @@ async def bot_info(message: Message) -> None:
 
 
 @dlg_router.message(F.text == "💬Чат")
-async def bot_info(message: Message):
+async def chat_handler(message: Message):
     await message.bot.send_message(
         chat_id=message.chat.id,
         text="Нажмите на кнопку ниже, чтобы присоединиться к нашему чату:",

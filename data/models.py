@@ -34,6 +34,8 @@ class Bet(models.Model):
     result = fields.BooleanField(null=True)
     size = fields.FloatField(null=False)
     team_name = fields.CharField(80, null=False)
+    bet_coefficient = fields.FloatField(null=False)
+    balance_change = fields.FloatField(null=True)
     user: fields.ForeignKeyRelation["User"] = fields.ForeignKeyField(
         "models.User", related_name="bets", to_field="tg_id", on_delete=fields.CASCADE
     )
