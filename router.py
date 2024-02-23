@@ -16,13 +16,20 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 from keyboards import (
+    admin_game_keyboard,
     bet_history_keyboard,
     bet_keyboard,
     home_keyboard,
     games_keyboard,
     chat_link_keyboard,
 )
-from callbacks import BetCallback, CancelCallback, GameCallback, MoreBetCallback
+from callbacks import (
+    BetCallback,
+    CancelCallback,
+    GameCallback,
+    MoreBetCallback,
+    SetGameResultCallback,
+)
 from data.models import Bet, Game, User
 
 from utils import (
@@ -90,7 +97,7 @@ async def command_start(message: Message, state: FSMContext) -> None:
 
 @dlg_router.message(F.text == "⚽️Матчи")
 async def games_handler(message: Message) -> None:
-    games = await Game.all()
+    games = await Game.filter(winner=None).order_by("starts_at")
     today_games = []
     for game in games:
         if game.starts_at.date() == datetime.date.today():
@@ -151,9 +158,39 @@ async def game_handler(
 ) -> None:
     uuid = callback_data.game_uuid
     game = await Game.get(uuid=uuid)
+
+    if query.message.chat.id in settings.ADMIN_IDS:
+        result_text = "Админ панель игры:\n"
+        result_text += f"{generate_game_text(game)}\n"
+        result_text += "Выбери победителя:"
+        await query.message.edit_text(
+            text=result_text, reply_markup=admin_game_keyboard(game)
+        )
+        return
+
     result_text = "Хочешь сделать ставку?\n\n"
     result_text += generate_game_text(game)
     await query.message.edit_text(text=result_text, reply_markup=bet_keyboard(game))
+
+
+@dlg_router.callback_query(SetGameResultCallback.filter())
+async def admin_game_handler(
+    query: CallbackQuery, callback_data: SetGameResultCallback, state: FSMContext
+) -> None:
+    uuid = callback_data.game_uuid
+    game = await Game.get(uuid=uuid).prefetch_related("bets__user")
+
+    if callback_data.team_name is not None:
+        await game.set_winner(callback_data.team_name)
+        await query.message.edit_text(
+            text=f"Победитель {callback_data.team_name} установлен",
+            reply_markup=admin_game_keyboard(game),
+        )
+    # else:
+    #     await game.delete()
+    #     await query.message.edit_text(
+    #         text=f"Игра удалена",
+    #     )
 
 
 @dlg_router.callback_query(BetCallback.filter())
@@ -191,6 +228,10 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
 
         user = await User.get(tg_id=message.chat.id)
         game = await Game.get(uuid=data["game_uuid"])
+
+        if user.balance < bet_size:
+            await message.answer("У вас недостаточно средств")
+            return
         team_name, bet_coefficient = data["bet_content"].split(" - ")
 
         await Bet.create(
@@ -276,16 +317,6 @@ async def chat_handler(message: Message):
         text="Нажмите на кнопку ниже, чтобы присоединиться к нашему чату:",
         reply_markup=chat_link_keyboard(),
     )
-
-
-# @dlg_router.callback_query(CancelCallback.filter(), Form.date)
-# async def cancel_laba_handler(
-#     query: CallbackQuery, callback_data: LabaCallback, state: FSMContext
-# ) -> None:
-#     await state.set_state(Form.laba)
-#     await query.message.edit_text(
-#         text=f"Выберите предмет", reply_markup=laba_keyboard()
-#     )
 
 
 # @dlg_router.callback_query(CancelCallback.filter(), Form.action)

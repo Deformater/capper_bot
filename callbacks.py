@@ -17,3 +17,8 @@ class BetCallback(CallbackData, prefix="bet"):
 
 class MoreBetCallback(CallbackData, prefix="more_bet"):
     bets_amount: int
+
+
+class SetGameResultCallback(CallbackData, prefix="set_result"):
+    game_uuid: UUID4
+    team_name: str = None

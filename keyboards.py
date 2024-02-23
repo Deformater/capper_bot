@@ -1,5 +1,11 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
-from callbacks import BetCallback, CancelCallback, GameCallback, MoreBetCallback
+from callbacks import (
+    BetCallback,
+    CancelCallback,
+    GameCallback,
+    MoreBetCallback,
+    SetGameResultCallback,
+)
 from data.models import Game
 from utils import generate_game_text
 
@@ -54,6 +60,40 @@ def bet_keyboard(game: Game):
         text=second_team_info,
         callback_data=BetCallback(game_uuid=game.uuid, content=second_team_info),
     )
+    builder.adjust(2)
+
+    return builder.as_markup()
+
+
+def admin_game_keyboard(game: Game):
+    builder = InlineKeyboardBuilder()
+
+    first_team_name = game.first_team_name
+    second_team_name = game.second_team_name
+
+    if game.winner == first_team_name:
+        first_team_name = f"✅{game.first_team_name}"
+    if game.winner == second_team_name:
+        second_team_name = f"✅{second_team_name}"
+
+    builder.button(
+        text=first_team_name,
+        callback_data=SetGameResultCallback(
+            game_uuid=game.uuid, team_name=game.first_team_name
+        ),
+    )
+
+    builder.button(
+        text=second_team_name,
+        callback_data=SetGameResultCallback(
+            game_uuid=game.uuid, team_name=game.second_team_name
+        ),
+    )
+
+    # builder.button(
+    #     text=f"Удалить игру",
+    #     callback_data=SetGameResultCallback(game_uuid=game.uuid, team_name="None")
+    # )
     builder.adjust(2)
 
     return builder.as_markup()

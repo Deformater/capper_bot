@@ -17,7 +17,7 @@ async def generate_rating_text(
 ) -> str:
     result_text = ""
     for place, user in enumerate(users):
-        match place:
+        match place + 1:
             case 1:
                 result_text += "🥇"
             case 2:
@@ -76,6 +76,6 @@ async def generate_bets_history_text(bets: list[Bet]) -> str:
 
 def generate_game_text(game: Game) -> str:
 
-    result_text = f"{game.starts_at.strftime('%H:%M')}(МСК) {game.first_team_name} 🆚 {game.second_team_name} {game.format} {'*' * game.hype}"
+    result_text = f"{game.starts_at.strftime('%H:%M')}(МСК) {game.first_team_name} ⚔️ {game.second_team_name} {game.format} {'*' * game.hype}"
 
     return result_text
