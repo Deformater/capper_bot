@@ -14,6 +14,7 @@ from aiogram.types import (
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
+import pytz
 
 from keyboards import (
     admin_game_keyboard,
@@ -113,7 +114,9 @@ async def games_handler(message: Message) -> None:
     games = await Game.filter(first_team_score=None).order_by("starts_at")
     today_games = []
     for game in games:
-        if (game.starts_at - datetime.timedelta(hours=3)) >= datetime.datetime.now():
+        if (
+            game.starts_at - datetime.timedelta(hours=3)
+        ) >= datetime.datetime.now().replace(tzinfo=pytz.UTC):
             today_games.append(game)
 
     if today_games:
