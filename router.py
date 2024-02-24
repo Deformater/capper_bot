@@ -196,6 +196,15 @@ async def process_game_score(message: Message, state: FSMContext) -> None:
         await game.set_score(score)
         await message.answer("Итоговый счёт установлен", reply_markup=home_keyboard())
         await state.clear()
+
+        for bet in game.bets:
+            try:
+                result_text = "Результат ставки:\n\n"
+                result_text += await generate_bets_history_text([bet])
+                await message.bot.send_message(bet.user.tg_id, result_text)
+            except TelegramForbiddenError:
+                continue
+
     else:
         if message.text == "Назад":
             await state.clear()
