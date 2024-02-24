@@ -73,7 +73,7 @@ async def generate_rating_text(
 
     result_text += "------------------\n"
 
-    result_text += generate_profile_text(current_user) + "\n\n"
+    result_text += f"{await generate_profile_text(current_user)}\n\n"
 
     result_text += f"Кол-во участников: {users_total}"
 
