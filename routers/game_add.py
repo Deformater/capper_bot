@@ -1,47 +1,21 @@
 import datetime
 
 from aiogram import Router, html, F
-from aiogram.filters import CommandStart, Command, CommandObject, ExceptionTypeFilter
-from aiogram.types import (
-    Message,
-    InlineQuery,
-    CallbackQuery,
-    ReplyKeyboardRemove,
-    ErrorEvent,
-    ChatMemberLeft,
-)
+from aiogram.filters import Command, CommandObject, ExceptionTypeFilter
+from aiogram.types import Message
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
-from keyboards import (
-    admin_game_keyboard,
-    bet_history_keyboard,
-    bet_keyboard,
-    home_keyboard,
-    games_keyboard,
-    chat_link_keyboard,
-)
-from callbacks import (
-    BetCallback,
-    CancelCallback,
-    GameCallback,
-    MoreBetCallback,
-    SetGameResultCallback,
-)
 from data.models import Bet, Game, User
 
 from utils import (
     game_format_validate,
     game_hype_validate,
-    generate_rating_text,
-    generate_profile_text,
     generate_game_text,
     start_at_validate,
     team_info_validate,
-    validate_bet_size,
-    generate_bets_history_text,
 )
 
 from tortoise.query_utils import Prefetch

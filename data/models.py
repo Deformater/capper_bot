@@ -49,7 +49,7 @@ class Bet(models.Model):
             self.result = True
             self.balance_change = self.size * self.bet_coefficient - self.size
             self.user.success_bet_count += 1
-            self.user.balance += self.balance_change + self.bet_size
+            self.user.balance += self.balance_change + self.size
         else:
             self.result = False
             self.balance_change = -self.size

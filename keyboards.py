@@ -114,32 +114,7 @@ def bet_history_keyboard(bets_amount):
     return builder.as_markup()
 
 
-# def date_keyboard():
-#     builder = InlineKeyboardBuilder()
-
-#     current_date = datetime.datetime.now().date()
-#     date_delta = datetime.timedelta(days=30)
-#     end_date = current_date + date_delta
-
-#     while current_date < end_date:
-#         builder.button(
-#             text=current_date.strftime("%d/%m"),
-#             callback_data=DateCallback(date=current_date.strftime("%d/%m")),
-#         )
-#         builder.adjust(6)
-#         current_date += datetime.timedelta(days=1)
-
-#     builder.attach(base_keyboard())
-
-#     return builder.as_markup()
-
-
-# def action_keyboard():
-#     builder = InlineKeyboardBuilder()
-
-#     builder.button(text="Записаться", callback_data=ActionCallback(action="join"))
-
-#     builder.attach(base_keyboard())
-#     builder.adjust(2, 1)
-
-#     return builder.as_markup()
+def cancel_bet_keyboard():
+    builder = ReplyKeyboardBuilder()
+    builder.button(text="❌Отменить")
+    return builder.as_markup()

@@ -19,6 +19,7 @@ from keyboards import (
     admin_game_keyboard,
     bet_history_keyboard,
     bet_keyboard,
+    cancel_bet_keyboard,
     home_keyboard,
     games_keyboard,
     chat_link_keyboard,
@@ -90,15 +91,17 @@ async def command_start(message: Message, state: FSMContext) -> None:
 
 @dlg_router.message(Command("admin"))
 async def command_admin(message: Message, command: CommandObject) -> None:
-    if message.chat.id == settings.ADMIN_ID:
-        users = await User.all()
-        args = command.args
-        if args is not None:
-            for user in users:
-                try:
-                    await message.bot.send_message(user.tg_id, args)
-                except TelegramForbiddenError:
-                    continue
+    if message.chat.id not in settings.ADMIN_IDS:
+        return
+
+    users = await User.all()
+    args = command.args
+    if args is not None:
+        for user in users:
+            try:
+                await message.bot.send_message(user.tg_id, args)
+            except TelegramForbiddenError:
+                continue
 
 
 @dlg_router.message(F.text == "⚽️Матчи")
@@ -106,19 +109,19 @@ async def games_handler(message: Message) -> None:
     games = await Game.filter(winner=None).order_by("starts_at")
     today_games = []
     for game in games:
-        if game.starts_at.date() == datetime.date.today():
+        if game.starts_at.date() >= datetime.date.today():
             today_games.append(game)
 
     if today_games:
         await message.bot.send_message(
             chat_id=message.chat.id,
-            text=f"Интересные матчи сегодня:",
+            text=f"Предстоящие матчи:",
             reply_markup=games_keyboard(today_games),
         )
     else:
         await message.bot.send_message(
             chat_id=message.chat.id,
-            text=f"Сегодня нет игр(",
+            text=f"Пока нет предстоящих матчей(",
             reply_markup=games_keyboard(today_games),
         )
 
@@ -224,7 +227,11 @@ async def bet_handler(
     result_text += f"Баланс {user.balance}💵\n"
     result_text += f"Введи сумму ставки:"
 
-    await query.message.edit_text(text=result_text)
+    await query.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=result_text,
+        reply_markup=cancel_bet_keyboard(),
+    )
 
 
 @dlg_router.message(Form.bet)
@@ -237,7 +244,9 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
 
         if user.balance < bet_size:
             await message.answer("У вас недостаточно средств")
+            await state.clear()
             return
+
         team_name, bet_coefficient = data["bet_content"].split(" - ")
 
         await Bet.create(
@@ -255,6 +264,11 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
 
         await message.answer(f"Вы успешно поставили на победу {data['bet']}")
     else:
+        if message.text == "❌Отменить":
+            await state.clear()
+            await message.answer("Ставка отменена", reply_markup=home_keyboard())
+            return
+
         await message.answer("Неверный формат ввода")
 
 
