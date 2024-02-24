@@ -114,6 +114,9 @@ async def games_handler(message: Message) -> None:
     games = await Game.filter(first_team_score=None).order_by("starts_at")
     today_games = []
     for game in games:
+        if message.chat.id in settings.ADMIN_IDS:
+            today_games.append(game)
+            continue
         if (
             game.starts_at - datetime.timedelta(hours=3)
         ) >= datetime.datetime.now().replace(tzinfo=pytz.UTC):
