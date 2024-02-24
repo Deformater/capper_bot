@@ -116,5 +116,5 @@ def bet_history_keyboard(bets_amount):
 
 def cancel_bet_keyboard():
     builder = ReplyKeyboardBuilder()
-    builder.button(text="❌Отменить")
+    builder.button(text="Назад")
     return builder.as_markup()

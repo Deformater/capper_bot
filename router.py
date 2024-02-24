@@ -264,7 +264,7 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
 
         await message.answer(f"Вы успешно поставили на победу {data['bet']}")
     else:
-        if message.text == "❌Отменить":
+        if message.text == "Назад":
             await state.clear()
             await message.answer("Ставка отменена", reply_markup=home_keyboard())
             return
