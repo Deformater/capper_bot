@@ -6,6 +6,10 @@ class CancelCallback(CallbackData, prefix="cancel"):
     pass
 
 
+class ContinueCallback(CallbackData, prefix="continue"):
+    pass
+
+
 class GameCallback(CallbackData, prefix="game"):
     game_uuid: UUID4
 

@@ -23,6 +23,7 @@ from keyboards import (
     bo2_bet_keyboard,
     bo2_team_bet_keyboard,
     cancel_bet_keyboard,
+    continue_keyboard,
     home_keyboard,
     games_keyboard,
     chat_link_keyboard,
@@ -32,6 +33,7 @@ from callbacks import (
     Bo2BetCallback,
     Bo2TeamBetCallback,
     CancelCallback,
+    ContinueCallback,
     GameCallback,
     MoreBetCallback,
     SetGameResultCallback,
@@ -75,34 +77,42 @@ async def command_start(message: Message, state: FSMContext) -> None:
         username = message.chat.username
 
     user = await User.get_or_create(tg_id=message.chat.id, username=username)
-    user = user[0]
-    user_channel_status = await message.bot.get_chat_member(
-        chat_id=settings.GROUP_ID, user_id=message.chat.id
-    )
-    user.is_subscripe = not (user_channel_status.status == "left")
-    await user.save()
 
-    text = """Привет! Ты попал в бот "Турнир прогнозистов" на DreamLeague Season 22, здесь все участники соревнуются между собой за главные призы, 1 место - $250 , 2 место - $100, 3 место - $50. Изначальный баланс : 5.000, собственно у кого в конце будет самый большой баланс - забирает главный приз, а отслеживать свое место вы можете во вкладке "Рейтинг", присоединяйся к нам и может именно ты заберешь главный приз!
+    text = f"""<i>Привет! Ты попал в бот "Турнир прогнозистов" на DreamLeague Season 22, здесь все участники соревнуются между собой за главные призы, 1 место - $250 , 2 место - $100, 3 место - $50. Изначальный баланс : 5.000, собственно у кого в конце будет самый большой баланс - забирает главный приз, а отслеживать свое место вы можете во вкладке "Рейтинг", присоединяйся к нам и может именно ты заберешь главный приз!</i>
 
-Все абсолютно бесплатно, единственное условие для участия - подписка на наш канал (https://t.me/+BZSbXOvlsmkxODEy)!
+<b>Все абсолютно бесплатно, единственное условие для участия - подписка на <a href="{settings.GROUP_NAME}">наш канал</a></b>
 
-Наш канал - https://t.me/+BZSbXOvlsmkxODEy
+<a href="{settings.GROUP_NAME}">Наш канал</a>
     """
 
     await message.answer(
         text,
-        reply_markup=home_keyboard(),
+        parse_mode="HTML",
+        reply_markup=continue_keyboard(),
     )
 
+
+@dlg_router.callback_query(ContinueCallback.filter())
+async def game_handler(
+    query: CallbackQuery, callback_data: GameCallback, state: FSMContext
+) -> None:
+    user = await User.get(tg_id=query.message.chat.id)
+    user_channel_status = await query.bot.get_chat_member(
+        chat_id=settings.GROUP_ID, user_id=query.message.chat.id
+    )
+    user.is_subscripe = not (user_channel_status.status == "left")
+    await user.save()
+
+    text = await generate_profile_text(user)
     if user.is_subscripe:
-        await message.answer(
-            f"Вы подписаны на {settings.GROUP_NAME}",
-            reply_markup=home_keyboard(),
+        await query.message.answer(
+            text, reply_markup=home_keyboard(), parse_mode="HTML"
         )
     else:
-        await message.answer(
-            f"Вы не подписаны на группу {settings.GROUP_NAME}, подпишитесь и нажмите /start",
+        await query.message.answer(
+            f'Вы не подписаны на <a href="{settings.GROUP_NAME}">группу</a>, подпишитесь и нажмите продолжить',
             reply_markup=ReplyKeyboardRemove(),
+            parse_mode="HTML",
         )
 
 

@@ -4,6 +4,7 @@ from callbacks import (
     Bo2BetCallback,
     Bo2TeamBetCallback,
     CancelCallback,
+    ContinueCallback,
     GameCallback,
     MoreBetCallback,
     SetGameResultCallback,
@@ -18,6 +19,14 @@ def base_keyboard():
     builder.button(text="Назад", callback_data=CancelCallback())
 
     return builder
+
+
+def continue_keyboard():
+    builder = InlineKeyboardBuilder()
+
+    builder.button(text="Продолжить", callback_data=ContinueCallback())
+
+    return builder.as_markup()
 
 
 def home_keyboard():
