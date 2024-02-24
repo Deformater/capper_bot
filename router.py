@@ -111,9 +111,10 @@ async def game_handler(
         )
     else:
         await query.message.answer(
-            f'Вы не подписаны на <a href="{settings.GROUP_NAME}">группу</a>, подпишитесь и нажмите продолжить',
+            f'Вы не подписаны на <a href="{settings.GROUP_NAME}">канал</a>, подпишитесь и нажмите продолжить',
             reply_markup=ReplyKeyboardRemove(),
             parse_mode="HTML",
+            disable_web_page_preview=True,
         )
 
 
@@ -220,6 +221,11 @@ async def game_handler(
     await query.message.edit_text(text=result_text, reply_markup=bet_keyboard(game))
 
 
+@dlg_router.message(F.text == "Назад")
+async def profile_handler(message: Message) -> None:
+    await games_handler(message)
+
+
 @dlg_router.message(GameAdmin.score)
 async def process_game_score(message: Message, state: FSMContext) -> None:
     if (score := score_validate(message.text)) is not None:
@@ -317,8 +323,6 @@ async def bo2_team_bet_handler(
     data = await state.get_data()
     team_name = data["team_name"]
     uuid = callback_data.game_uuid
-
-    await state.clear()
 
     game = await Game.get(uuid=uuid)
     content = f"{team_name} - {callback_data.bet_coefficient}"
