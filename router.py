@@ -36,6 +36,8 @@ from utils import (
     generate_rating_text,
     generate_profile_text,
     generate_game_text,
+    start_at_validate,
+    team_info_validate,
     validate_bet_size,
     generate_bets_history_text,
 )
@@ -51,9 +53,12 @@ class Form(StatesGroup):
     bet = State()
 
 
-# @dlg_router.error(ExceptionTypeFilter(KeyError), F.update.query.as_("query"))
-# async def error_handler(event: ErrorEvent, query: CallbackQuery) -> None:
-#         await query.message.answer("Что-то пошло не так, перезапустите бота /start")
+class GameAdd(StatesGroup):
+    first_team_info = State()
+    second_team_info = State()
+    starts_at = State()
+    format = State()
+    hype = State()
 
 
 @dlg_router.message(CommandStart())
@@ -265,11 +270,17 @@ async def bet_history_handler(message: Message):
 
     result_text = "📈История ставок:\n\n"
     result_text += await generate_bets_history_text(user.bets[:5])
-    await message.bot.send_message(
-        chat_id=message.chat.id,
-        text=result_text,
-        reply_markup=bet_history_keyboard(5),
-    )
+    if len(user.bets) > 5:
+        await message.bot.send_message(
+            chat_id=message.chat.id,
+            text=result_text,
+            reply_markup=bet_history_keyboard(5),
+        )
+    else:
+        await message.bot.send_message(
+            chat_id=message.chat.id,
+            text=result_text,
+        )
 
 
 @dlg_router.callback_query(MoreBetCallback.filter())

@@ -1,3 +1,4 @@
+from datetime import datetime
 from data.models import Bet, Game, User
 
 
@@ -8,6 +9,37 @@ def validate_bet_size(bet_size: str) -> float | None:
             return bet_size
         else:
             return None
+    except:
+        return None
+
+
+def team_info_validate(info: str) -> bool:
+    info_list = info.split("-")
+    return (
+        (len(info_list) == 2)
+        and (not info_list[0].isdigit())
+        and (validate_bet_size(info_list[1]) is not None)
+    )
+
+
+def start_at_validate(date: str) -> datetime | None:
+    try:
+        date = datetime.strptime(date, "%H:%M-%d.%m")
+        return date.replace(year=2024)
+    except:
+        return None
+
+
+def game_format_validate(format: str) -> bool:
+    return (len(format) == 3) and (format[:2] == "bo") and format[-1].isdigit()
+
+
+def game_hype_validate(hype: str) -> int | None:
+    try:
+        hype = int(hype)
+        if hype in range(1, 4):
+            return hype
+        return None
     except:
         return None
 

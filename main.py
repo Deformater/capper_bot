@@ -8,6 +8,7 @@ from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 from redis.asyncio import Redis
 
 from router import dlg_router
+from routers.game_add import game_add_router
 
 from data.init import register_db, upgrade_db
 
@@ -34,6 +35,7 @@ async def main() -> None:
 
     dp = Dispatcher(storage=storage)
     dp.include_router(dlg_router)
+    dp.include_router(game_add_router)
     bot = Bot(settings.TOKEN)
     await dp.start_polling(bot)
 
