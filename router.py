@@ -88,16 +88,17 @@ async def command_start(message: Message, state: FSMContext) -> None:
         )
 
 
-# @dlg_router.message(Command("admin"))
-# async def command_admin(message: Message, command: CommandObject) -> None:
-#     if message.chat.id not in settings.ADMIN_IDS:
-#         return
-
-#     await message.bot.send_message(
-#         chat_id=message.chat.id,
-#         text=f"Сегодня нет игр(",
-#         reply_markup=admin_keyboard(),
-#     )
+@dlg_router.message(Command("admin"))
+async def command_admin(message: Message, command: CommandObject) -> None:
+    if message.chat.id == settings.ADMIN_ID:
+        users = await User.all()
+        args = command.args
+        if args is not None:
+            for user in users:
+                try:
+                    await message.bot.send_message(user.tg_id, args)
+                except TelegramForbiddenError:
+                    continue
 
 
 @dlg_router.message(F.text == "⚽️Матчи")
@@ -328,13 +329,3 @@ async def chat_handler(message: Message):
         text="Нажмите на кнопку ниже, чтобы присоединиться к нашему чату:",
         reply_markup=chat_link_keyboard(),
     )
-
-
-# @dlg_router.callback_query(CancelCallback.filter(), Form.action)
-# async def cancel_date_handler(
-#     query: CallbackQuery, callback_data: LabaCallback, state: FSMContext
-# ) -> None:
-#     await state.set_state(Form.date)
-#     await query.message.edit_text(
-#         text=f"Выберите дату сдачи лабораторной", reply_markup=date_keyboard()
-#     )

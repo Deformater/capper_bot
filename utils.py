@@ -100,7 +100,11 @@ async def generate_bets_history_text(bets: list[Bet]) -> str:
         if bet.result is None:
             result_text += f"Результатов ещё нет("
         else:
-            result_text += f"Баланс: {bet.balance_change}"
+            if bet.balance_change > 0:
+                result_text += f"Баланс: +{bet.balance_change}"
+            else:
+                result_text += f"Баланс: {bet.balance_change}"
+
         result_text += "\n\n"
 
     return result_text
