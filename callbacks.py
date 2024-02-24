@@ -12,7 +12,19 @@ class GameCallback(CallbackData, prefix="game"):
 
 class BetCallback(CallbackData, prefix="bet"):
     game_uuid: UUID4
+    content: str = None
+    bet_type: str = None
+
+
+class Bo2BetCallback(CallbackData, prefix="bo2_bet"):
+    game_uuid: UUID4
     content: str
+
+
+class Bo2TeamBetCallback(CallbackData, prefix="bo2_team"):
+    game_uuid: UUID4
+    bet_type: str
+    bet_coefficient: float
 
 
 class MoreBetCallback(CallbackData, prefix="more_bet"):

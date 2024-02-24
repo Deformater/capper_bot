@@ -19,6 +19,8 @@ from keyboards import (
     admin_game_keyboard,
     bet_history_keyboard,
     bet_keyboard,
+    bo2_bet_keyboard,
+    bo2_team_bet_keyboard,
     cancel_bet_keyboard,
     home_keyboard,
     games_keyboard,
@@ -26,6 +28,8 @@ from keyboards import (
 )
 from callbacks import (
     BetCallback,
+    Bo2BetCallback,
+    Bo2TeamBetCallback,
     CancelCallback,
     GameCallback,
     MoreBetCallback,
@@ -37,6 +41,7 @@ from utils import (
     generate_rating_text,
     generate_profile_text,
     generate_game_text,
+    score_validate,
     start_at_validate,
     team_info_validate,
     validate_bet_size,
@@ -54,12 +59,8 @@ class Form(StatesGroup):
     bet = State()
 
 
-class GameAdd(StatesGroup):
-    first_team_info = State()
-    second_team_info = State()
-    starts_at = State()
-    format = State()
-    hype = State()
+class GameAdmin(StatesGroup):
+    score = State()
 
 
 @dlg_router.message(CommandStart())
@@ -106,7 +107,7 @@ async def command_admin(message: Message, command: CommandObject) -> None:
 
 @dlg_router.message(F.text == "⚽️Матчи")
 async def games_handler(message: Message) -> None:
-    games = await Game.filter(winner=None).order_by("starts_at")
+    games = await Game.filter(first_team_score=None).order_by("starts_at")
     today_games = []
     for game in games:
         if game.starts_at.date() >= datetime.date.today():
@@ -128,7 +129,7 @@ async def games_handler(message: Message) -> None:
 
 @dlg_router.message(F.text == "🏆Рейтинг")
 async def rating_handler(message: Message) -> None:
-    users = await User.all().order_by("-balance")
+    users = await User.all().order_by("-_balance")
     current_user = await User.get(tg_id=message.chat.id)
     current_user_place = users.index(current_user) + 1
 
@@ -167,14 +168,19 @@ async def game_handler(
 ) -> None:
     uuid = callback_data.game_uuid
     game = await Game.get(uuid=uuid)
+    await state.update_data(game_uuid=str(uuid))
 
     if query.message.chat.id in settings.ADMIN_IDS:
         result_text = "Админ панель игры:\n"
         result_text += f"{generate_game_text(game)}\n"
-        result_text += "Выбери победителя:"
-        await query.message.edit_text(
-            text=result_text, reply_markup=admin_game_keyboard(game)
+        result_text += "Введи итоговый счёт в формате:\n"
+        result_text += "1:2"
+        await query.bot.send_message(
+            chat_id=query.message.chat.id,
+            text=result_text,
+            reply_markup=cancel_bet_keyboard(),
         )
+        await state.set_state(GameAdmin.score)
         return
 
     result_text = "Хочешь сделать ставку?\n\n"
@@ -182,24 +188,23 @@ async def game_handler(
     await query.message.edit_text(text=result_text, reply_markup=bet_keyboard(game))
 
 
-@dlg_router.callback_query(SetGameResultCallback.filter())
-async def admin_game_handler(
-    query: CallbackQuery, callback_data: SetGameResultCallback, state: FSMContext
-) -> None:
-    uuid = callback_data.game_uuid
-    game = await Game.get(uuid=uuid).prefetch_related("bets__user")
+@dlg_router.message(GameAdmin.score)
+async def process_game_score(message: Message, state: FSMContext) -> None:
+    if (score := score_validate(message.text)) is not None:
+        data = await state.get_data()
+        game = await Game.get(uuid=data["game_uuid"]).prefetch_related("bets__user")
+        await game.set_score(score)
+        await message.answer("Итоговый счёт установлен", reply_markup=home_keyboard())
+        await state.clear()
+    else:
+        if message.text == "Назад":
+            await state.clear()
+            await message.answer(
+                "Итоговый счёт не установлен", reply_markup=home_keyboard()
+            )
+            return
 
-    if callback_data.team_name is not None:
-        await game.set_winner(callback_data.team_name)
-        await query.message.edit_text(
-            text=f"Победитель {callback_data.team_name} установлен",
-            reply_markup=admin_game_keyboard(game),
-        )
-    # else:
-    #     await game.delete()
-    #     await query.message.edit_text(
-    #         text=f"Игра удалена",
-    #     )
+        await message.answer("Неверный формат ввода")
 
 
 @dlg_router.callback_query(BetCallback.filter())
@@ -208,24 +213,93 @@ async def bet_handler(
 ) -> None:
     uuid = callback_data.game_uuid
 
-    await state.clear()
-    await state.set_state(Form.bet)
-    await state.update_data(
-        bet=callback_data.content,
-        game_uuid=str(uuid),
-        bet_content=callback_data.content,
-    )
-
     game = await Game.get(uuid=uuid)
 
     result_text = "Хочешь сделать ставку?\n\n"
     result_text += generate_game_text(game) + "\n"
-    result_text += f"Ставка на победу {callback_data.content}\n\n"
+    if callback_data.bet_type == "DRAW":
+        result_text += f"Ставка на {callback_data.content}\n\n"
+    else:
+        result_text += f"Ставка на победу {callback_data.content}\n\n"
 
     user = await User.get(tg_id=query.message.chat.id)
 
     result_text += f"Баланс {user.balance}💵\n"
     result_text += f"Введи сумму ставки:"
+    await state.set_state(Form.bet)
+    await state.update_data(
+        game_uuid=str(uuid),
+        bet_content=callback_data.content,
+        bet_type=callback_data.bet_type,
+    )
+
+    await query.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=result_text,
+        reply_markup=cancel_bet_keyboard(),
+    )
+
+
+@dlg_router.callback_query(Bo2BetCallback.filter())
+async def bet_handler(
+    query: CallbackQuery, callback_data: Bo2BetCallback, state: FSMContext
+) -> None:
+    uuid = callback_data.game_uuid
+
+    game = await Game.get(uuid=uuid)
+
+    await state.update_data(team_name=callback_data.content)
+
+    result_text = f"Выбрана комнда {callback_data.content}\n"
+    result_text += "Выберите тип ставки:"
+    if callback_data.content == game.first_team_name:
+        win_coeff, double_chance_coeff = (
+            game.first_team_coefficient,
+            game.first_team_double_chance,
+        )
+    else:
+        win_coeff, double_chance_coeff = (
+            game.second_team_coefficient,
+            game.second_team_double_chance,
+        )
+    await query.message.edit_text(
+        text=result_text,
+        reply_markup=bo2_team_bet_keyboard(game, win_coeff, double_chance_coeff),
+    )
+    return
+
+
+@dlg_router.callback_query(Bo2TeamBetCallback.filter())
+async def bo2_team_bet_handler(
+    query: CallbackQuery, callback_data: Bo2TeamBetCallback, state: FSMContext
+) -> None:
+    data = await state.get_data()
+    team_name = data["team_name"]
+    uuid = callback_data.game_uuid
+
+    await state.clear()
+
+    game = await Game.get(uuid=uuid)
+    content = f"{team_name} - {callback_data.bet_coefficient}"
+
+    result_text = "Хочешь сделать ставку?\n\n"
+    result_text += generate_game_text(game) + "\n"
+    if callback_data.bet_type == "D_CH":
+        result_text += f"Ставка на двойной шанс {content}\n\n"
+    else:
+        result_text += f"Ставка на победу {content}\n\n"
+
+    user = await User.get(tg_id=query.message.chat.id)
+
+    result_text += f"Баланс {user.balance}💵\n"
+    result_text += f"Введи сумму ставки:"
+
+    await state.set_state(Form.bet)
+    await state.update_data(
+        game_uuid=str(uuid),
+        bet_content=content,
+        bet_type=callback_data.bet_type,
+    )
 
     await query.bot.send_message(
         chat_id=query.message.chat.id,
@@ -244,10 +318,15 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
 
         if user.balance < bet_size:
             await message.answer("У вас недостаточно средств")
-            await state.clear()
+            return
+
+        if bet_size > 1000:
+            await message.answer("Максимальная ставка - 1000💵")
             return
 
         team_name, bet_coefficient = data["bet_content"].split(" - ")
+        if team_name == "Ничья":
+            team_name = None
 
         await Bet.create(
             size=bet_size,
@@ -255,6 +334,7 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
             game=game,
             team_name=team_name,
             bet_coefficient=bet_coefficient,
+            bet_type=data["bet_type"],
         )
         user.balance -= bet_size
         user.bet_count += 1
@@ -262,7 +342,10 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
 
         await state.clear()
 
-        await message.answer(f"Вы успешно поставили на победу {data['bet']}")
+        await message.answer(
+            f"Вы успешно поставили на {data['bet_content']}",
+            reply_markup=home_keyboard(),
+        )
     else:
         if message.text == "Назад":
             await state.clear()
@@ -274,7 +357,9 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
 
 @dlg_router.message(F.text == "📈История ставок")
 async def bet_history_handler(message: Message):
-    user = await User.get(tg_id=message.chat.id).prefetch_related("bets")
+    user = await User.get(tg_id=message.chat.id).prefetch_related(
+        Prefetch("bets", queryset=Bet.all().order_by("-created_at"))
+    )
 
     if len(user.bets) == 0:
         await message.bot.send_message(
@@ -305,14 +390,13 @@ async def bet_history_handler(
     user = await User.get(tg_id=query.message.chat.id).prefetch_related(
         Prefetch("bets", queryset=Bet.all().order_by("-created_at"))
     )
+    bets_amount = callback_data.bets_amount + 5
     result_text = "📈История ставок:\n\n"
-    result_text += await generate_bets_history_text(
-        user.bets[: callback_data.bets_amount]
-    )
-    if callback_data.bets_amount < 30 and callback_data.bets_amount < len(user.bets):
+    result_text += await generate_bets_history_text(user.bets[:bets_amount])
+    if callback_data.bets_amount < 30 and bets_amount < len(user.bets):
         await query.message.edit_text(
             text=result_text,
-            reply_markup=bet_history_keyboard(callback_data.bets_amount + 5),
+            reply_markup=bet_history_keyboard(bets_amount + 5),
         )
     else:
         await query.message.edit_text(

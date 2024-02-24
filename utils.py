@@ -1,5 +1,5 @@
 from datetime import datetime
-from data.models import Bet, Game, User
+from data.models import Bet, BetType, Game, User
 
 
 def validate_bet_size(bet_size: str) -> float | None:
@@ -16,7 +16,7 @@ def validate_bet_size(bet_size: str) -> float | None:
 def team_info_validate(info: str) -> bool:
     info_list = info.split("-")
     return (
-        (len(info_list) == 2)
+        (len(info_list) == 2 or len(info_list) == 3)
         and (not info_list[0].isdigit())
         and (validate_bet_size(info_list[1]) is not None)
     )
@@ -40,6 +40,15 @@ def game_hype_validate(hype: str) -> int | None:
         if hype in range(1, 4):
             return hype
         return None
+    except:
+        return None
+
+
+def score_validate(score: str) -> bool:
+    try:
+        score = score.replace(" ", "")
+        score_list = list(map(int, score.split(":")))
+        return score_list
     except:
         return None
 
@@ -94,9 +103,16 @@ async def generate_bets_history_text(bets: list[Bet]) -> str:
             case None:
                 result_text += "❔"
         result_text += f"{generate_game_text(await bet.game)}\n"
-        result_text += (
-            f"Победа {bet.team_name} {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
-        )
+        match bet.bet_type:
+            case BetType.WIN:
+                result_text += (
+                    f"Победа {bet.team_name} {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+                )
+            case BetType.DRAW:
+                result_text += f"Ничья {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+            case BetType.DOEBLE_CHANCE:
+                result_text += f"Двойной шанс {bet.team_name} {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+
         if bet.result is None:
             result_text += f"Результатов ещё нет("
         else:

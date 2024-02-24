@@ -7,33 +7,48 @@ class User(models.Model):
     tg_id = fields.BigIntField(unique=True, pk=True)
     username = fields.CharField(80, null=False)
     score = fields.FloatField(default=0)
-    balance = fields.FloatField(default=5000)
+    _balance = fields.FloatField(default=5000)
     bet_count = fields.IntField(default=0)
     success_bet_count = fields.IntField(default=0)
     is_subscripe = fields.BooleanField(default=False)
     bets = fields.ReverseRelation["Bet"]
 
     @property
+    def balance(self):
+        return round(self._balance, 2)
+
+    @balance.setter
+    def balance(self, value):
+        self._balance = round(value, 2)
+
+    @property
     async def success_bet_persent(self) -> float:
         if self.bet_count == 0:
             return 0
 
-        return self.success_bet_count / self.bet_count * 100
+        return round((self.success_bet_count / self.bet_count) * 100, 2)
 
     @property
     async def place(self) -> int:
-        users = await User.all().order_by("-balance")
+        users = await User.all().order_by("-_balance")
         return users.index(self) + 1
 
     class Meta:
         table = "users"
 
 
+class BetType(Enum):
+    WIN = "WIN"
+    DRAW = "DRAW"
+    DOEBLE_CHANCE = "D_CH"
+
+
 class Bet(models.Model):
     uuid = fields.UUIDField(unique=True, pk=True)
     result = fields.BooleanField(null=True)
     size = fields.FloatField(null=False)
-    team_name = fields.CharField(80, null=False)
+    team_name = fields.CharField(80, null=True)
+    bet_type = fields.CharEnumField(BetType, null=False)
     bet_coefficient = fields.FloatField(null=False)
     balance_change = fields.FloatField(null=True)
     user: fields.ForeignKeyRelation["User"] = fields.ForeignKeyField(
@@ -47,7 +62,7 @@ class Bet(models.Model):
     async def set_result(self, result: bool) -> None:
         if result:
             self.result = True
-            self.balance_change = self.size * self.bet_coefficient - self.size
+            self.balance_change = round(self.size * self.bet_coefficient - self.size, 2)
             self.user.success_bet_count += 1
             self.user.balance += self.balance_change + self.size
         else:
@@ -66,8 +81,12 @@ class Game(models.Model):
     first_team_name = fields.TextField(null=False)
     second_team_name = fields.TextField(null=False)
     first_team_coefficient = fields.FloatField(null=False)
+    first_team_double_chance = fields.FloatField(null=True)
     second_team_coefficient = fields.FloatField(null=False)
-    winner = fields.TextField(null=True)
+    second_team_double_chance = fields.FloatField(null=True)
+    draw_coefficient = fields.FloatField(null=True)
+    first_team_score = fields.IntField(null=True)
+    second_team_score = fields.IntField(null=True)
     format = fields.CharField(max_length=10, null=False)
     starts_at = fields.DatetimeField(null=False)
     hype = fields.IntField(null=False)
@@ -77,6 +96,26 @@ class Game(models.Model):
         for bet in self.bets:
             await bet.set_result(bet.team_name == name)
         self.winner = name
+        await self.save()
+
+    async def set_score(self, score: list[float]) -> None:
+        self.first_team_score = score[0]
+        self.second_team_score = score[1]
+        for bet in self.bets:
+            match bet.bet_type:
+                case BetType.WIN:
+                    if bet.team_name == self.first_team_name:
+                        await bet.set_result(score[0] > score[1])
+                    else:
+                        await bet.set_result(score[0] < score[1])
+                case BetType.DRAW:
+                    await bet.set_result(score[0] == score[1])
+                case BetType.DOEBLE_CHANCE:
+                    if bet.team_name == self.first_team_name:
+                        await bet.set_result(score[0] > 0)
+                    else:
+                        await bet.set_result(score[1] > 0)
+
         await self.save()
 
     class Meta:
