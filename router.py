@@ -113,7 +113,7 @@ async def games_handler(message: Message) -> None:
     games = await Game.filter(first_team_score=None).order_by("starts_at")
     today_games = []
     for game in games:
-        if (game.starts_at - datetime.timedelta(hours=3)) >= datetime.date.now():
+        if (game.starts_at - datetime.timedelta(hours=3)) >= datetime.datetime.now():
             today_games.append(game)
 
     if today_games:
