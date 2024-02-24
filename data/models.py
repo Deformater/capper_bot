@@ -6,7 +6,6 @@ from enum import Enum
 class User(models.Model):
     tg_id = fields.BigIntField(unique=True, pk=True)
     username = fields.CharField(80, null=False)
-    score = fields.FloatField(default=0)
     _balance = fields.FloatField(default=5000)
     bet_count = fields.IntField(default=0)
     success_bet_count = fields.IntField(default=0)

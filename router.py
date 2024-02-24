@@ -68,12 +68,15 @@ async def command_start(message: Message, state: FSMContext) -> None:
 
     await state.clear()
 
-    user = await User.get_or_create(
-        tg_id=message.chat.id, username=message.chat.username
-    )
+    if message.chat.username is None:
+        username = str(message.chat.id)
+    else:
+        username = message.chat.username
+
+    user = await User.get_or_create(tg_id=message.chat.id, username=username)
     user = user[0]
     user_channel_status = await message.bot.get_chat_member(
-        chat_id=settings.GROUP_NAME, user_id=message.chat.id
+        chat_id=settings.GROUP_ID, user_id=message.chat.id
     )
     user.is_subscripe = not (user_channel_status.status == "left")
     await user.save()
@@ -105,12 +108,12 @@ async def command_admin(message: Message, command: CommandObject) -> None:
                 continue
 
 
-@dlg_router.message(F.text == "⚽️Матчи")
+@dlg_router.message(F.text == "🎮Матчи")
 async def games_handler(message: Message) -> None:
     games = await Game.filter(first_team_score=None).order_by("starts_at")
     today_games = []
     for game in games:
-        if game.starts_at.date() >= datetime.date.today():
+        if (game.starts_at - datetime.timedelta(hours=3)) >= datetime.date.now():
             today_games.append(game)
 
     if today_games:
@@ -417,13 +420,14 @@ async def bet_history_handler(
 async def bot_info_handler(message: Message) -> None:
     await message.bot.send_message(
         chat_id=message.chat.id,
-        text="""
-            В нашем боте каждый из участников может посоревноваться за призы(<b>250$</b> - 1 место, <b>100$ - 2 место</b>, <b>50$</b> - 3 место)
+        text="""В нашем боте каждый из участников может посоревноваться за призы(<b>250$</b> - 1 место, <b>100$</b> - 2 место, <b>50$</b> - 3 место)
 
-            Все что вам нужно делать это ежедневно делать прогнозы в нашем боте на матчи DreamLeague S22, в итоге после финала турнира трое лучших прогнозистов смогут забрать свои призы!!
+        Все что от вас требуется - это ежедневно делать прогнозы в нашем боте на матчи DreamLeague S22, в итоге после финала турнира трое лучших прогнозистов смогут забрать свои призы!
 
-            Отслеживать свое место на данный момент вы можете во вкладке '🏆Рейтинг', желаем удачи!
-            """,
+        Отслеживать свое место на данный момент вы можете во вкладке '🏆Рейтинг', желаем удачи!
+
+        ℹ️ <i>Если возникли проблемы(попробуйте сначала перезапустить /start), не помогло пишите: @bpmanager1</i>
+        """,
         parse_mode="HTML",
         reply_markup=home_keyboard(),
     )

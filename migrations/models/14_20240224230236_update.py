@@ -3,9 +3,9 @@ from tortoise import BaseDBAsyncClient
 
 async def upgrade(db: BaseDBAsyncClient) -> str:
     return """
-        ALTER TABLE "users" RENAME COLUMN "balance" TO "_balance";"""
+        ALTER TABLE "users" DROP COLUMN "score";"""
 
 
 async def downgrade(db: BaseDBAsyncClient) -> str:
     return """
-        ALTER TABLE "users" RENAME COLUMN "_balance" TO "balance";"""
+        ALTER TABLE "users" ADD "score" DOUBLE PRECISION NOT NULL  DEFAULT 0;"""

@@ -73,9 +73,7 @@ async def generate_rating_text(
 
     result_text += "------------------\n"
 
-    result_text += f"[{current_user_place} место] {current_user.username} ({current_user.balance}💵)\n"
-    result_text += f"Кол-во ставок: {current_user.bet_count}\n"
-    result_text += f"% побед: {await current_user.success_bet_persent}\n\n"
+    result_text += generate_profile_text(current_user) + "\n\n"
 
     result_text += f"Кол-во участников: {users_total}"
 
@@ -85,9 +83,11 @@ async def generate_rating_text(
 async def generate_profile_text(current_user: User) -> str:
     result_text = ""
 
-    result_text += f"[{await current_user.place} место] {current_user.username} ({current_user.balance}💵)\n"
+    result_text += (
+        f"Вы находитесь на {await current_user.place} месте ({current_user.balance}💵)\n"
+    )
     result_text += f"Кол-во ставок: {current_user.bet_count}\n"
-    result_text += f"% побед: {await current_user.success_bet_persent}"
+    result_text += f"Процент побед: {await current_user.success_bet_persent}"
 
     return result_text
 

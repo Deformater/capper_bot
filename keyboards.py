@@ -24,7 +24,7 @@ def home_keyboard():
     builder = ReplyKeyboardBuilder()
 
     builder.button(
-        text="⚽️Матчи",
+        text="🎮Матчи",
     )
     builder.button(text="📈История ставок")
     builder.button(text="🙍‍♂️Профиль")
