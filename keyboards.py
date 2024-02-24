@@ -93,7 +93,7 @@ def bo2_bet_keyboard(game: Game):
         text=first_team_info,
         callback_data=Bo2BetCallback(game_uuid=game.uuid, content=first_team_info),
     )
-    draw_info = f"ничья - {game.draw_coefficient}"
+    draw_info = f"НИЧЬЯ - {game.draw_coefficient}"
     builder.button(
         text=draw_info,
         callback_data=BetCallback(

@@ -89,6 +89,7 @@ async def command_start(message: Message, state: FSMContext) -> None:
         text,
         parse_mode="HTML",
         reply_markup=continue_keyboard(),
+        disable_web_page_preview=True,
     )
 
 
