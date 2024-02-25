@@ -156,7 +156,6 @@ async def games_handler(message: Message) -> None:
         await message.bot.send_message(
             chat_id=message.chat.id,
             text=f"Пока нет предстоящих матчей(",
-            reply_markup=games_keyboard(today_games),
         )
 
 
@@ -403,7 +402,7 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
                     bet.bet_type == BetType(data["bet_type"])
                 ):
                     await message.answer(
-                        f"Вы уже поставили на эту катировку",
+                        f"Вы уже поставили на эту котировку",
                         reply_markup=home_keyboard(),
                     )
                     await state.clear()
