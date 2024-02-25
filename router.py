@@ -213,6 +213,8 @@ async def game_handler(
             reply_markup=cancel_bet_keyboard(),
         )
         await state.set_state(GameAdmin.score)
+        await state.update_data(game_uuid=str(uuid))
+
         return
 
     result_text = "Хочешь сделать ставку?\n\n"
@@ -254,7 +256,7 @@ async def process_game_score(message: Message, state: FSMContext) -> None:
         game = await Game.get(uuid=data["game_uuid"]).prefetch_related("bets__user")
         await game.set_score(score)
         await message.answer("Итоговый счёт установлен", reply_markup=home_keyboard())
-        await state.clear()
+        
 
         for bet in game.bets:
             try:
@@ -263,6 +265,7 @@ async def process_game_score(message: Message, state: FSMContext) -> None:
                 await message.bot.send_message(bet.user.tg_id, result_text)
             except TelegramForbiddenError:
                 continue
+        await state.clear()
 
     else:
         if message.text == "Назад":
