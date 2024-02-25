@@ -38,7 +38,7 @@ from callbacks import (
     MoreBetCallback,
     SetGameResultCallback,
 )
-from data.models import Bet, Game, User
+from data.models import Bet, BetType, Game, User
 
 from utils import (
     generate_rating_text,
@@ -221,9 +221,31 @@ async def game_handler(
     await query.message.edit_text(text=result_text, reply_markup=bet_keyboard(game))
 
 
-@dlg_router.message(F.text == "Назад")
-async def profile_handler(message: Message) -> None:
-    await games_handler(message)
+@dlg_router.callback_query(CancelCallback.filter())
+async def game_handler(
+    query: CallbackQuery, callback_data: GameCallback, state: FSMContext
+) -> None:
+    games = await Game.filter(first_team_score=None).order_by("starts_at")
+    today_games = []
+    for game in games:
+        if query.message.chat.id in settings.ADMIN_IDS:
+            today_games.append(game)
+            continue
+        if (
+            game.starts_at - datetime.timedelta(hours=3)
+        ) >= datetime.datetime.now().replace(tzinfo=pytz.UTC):
+            today_games.append(game)
+
+    if today_games:
+        await query.message.edit_text(
+            text=f"Предстоящие матчи:",
+            reply_markup=games_keyboard(today_games),
+        )
+    else:
+        await query.message.edit_text(
+            text=f"Пока нет предстоящих матчей(",
+            reply_markup=games_keyboard(today_games),
+        )
 
 
 @dlg_router.message(GameAdmin.score)
@@ -358,8 +380,10 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
     if (bet_size := validate_bet_size(message.text)) is not None:
         data = await state.get_data()
 
-        user = await User.get(tg_id=message.chat.id)
         game = await Game.get(uuid=data["game_uuid"])
+        user = await User.get(tg_id=message.chat.id).prefetch_related(
+            Prefetch("bets", queryset=Bet.filter(game=game))
+        )
 
         if user.balance < bet_size:
             await message.answer("У вас недостаточно средств")
@@ -372,6 +396,18 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
         team_name, bet_coefficient = data["bet_content"].split(" - ")
         if team_name == "Ничья":
             team_name = None
+
+        if len(user.bets) > 0:
+            for bet in user.bets:
+                if (bet.team_name == team_name) and (
+                    bet.bet_type == BetType(data["bet_type"])
+                ):
+                    await message.answer(
+                        f"Вы уже поставили на эту катировку",
+                        reply_markup=home_keyboard(),
+                    )
+                    await state.clear()
+                    return
 
         await Bet.create(
             size=bet_size,

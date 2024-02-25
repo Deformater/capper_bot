@@ -61,8 +61,12 @@ def games_keyboard(games: list):
 
 def bet_keyboard(game: Game):
     if game.format == "bo2":
-        return bo2_bet_keyboard(game)
-    return base_bet_keyboard(game)
+        builder = bo2_bet_keyboard(game)
+    else:
+        builder = base_bet_keyboard(game)
+
+    builder.attach(base_keyboard())
+    return builder.as_markup()
 
 
 def base_bet_keyboard(game: Game):
@@ -83,7 +87,7 @@ def base_bet_keyboard(game: Game):
     )
     builder.adjust(2)
 
-    return builder.as_markup()
+    return builder
 
 
 def bo2_bet_keyboard(game: Game):
@@ -93,7 +97,7 @@ def bo2_bet_keyboard(game: Game):
         text=first_team_info,
         callback_data=Bo2BetCallback(game_uuid=game.uuid, content=first_team_info),
     )
-    draw_info = f"НИЧЬЯ - {game.draw_coefficient}"
+    draw_info = f"Ничья - {game.draw_coefficient}"
     builder.button(
         text=draw_info,
         callback_data=BetCallback(
@@ -107,7 +111,7 @@ def bo2_bet_keyboard(game: Game):
     )
     builder.adjust(3)
 
-    return builder.as_markup()
+    return builder
 
 
 def bo2_team_bet_keyboard(
@@ -129,6 +133,7 @@ def bo2_team_bet_keyboard(
         ),
     )
     builder.adjust(2)
+    builder.attach(base_keyboard())
 
     return builder.as_markup()
 

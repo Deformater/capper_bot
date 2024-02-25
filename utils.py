@@ -128,6 +128,6 @@ async def generate_bets_history_text(bets: list[Bet]) -> str:
 
 def generate_game_text(game: Game) -> str:
 
-    result_text = f"{game.starts_at.strftime('%H:%M')}(МСК) {game.first_team_name} ⚔️ {game.second_team_name} {game.format.capitalize()} {'★' * game.hype}"
+    result_text = f"{game.starts_at.strftime('%H:%M')}(МСК) {game.first_team_name} ⚔️ {game.second_team_name} {game.format.upper()} {'★' * game.hype}"
 
     return result_text
