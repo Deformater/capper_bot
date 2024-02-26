@@ -36,6 +36,7 @@ from callbacks import (
     ContinueCallback,
     GameCallback,
     MoreBetCallback,
+    MoreTeamCallback,
     SetGameResultCallback,
 )
 from data.models import Bet, BetType, Game, User
@@ -141,6 +142,7 @@ async def games_handler(message: Message) -> None:
         if message.chat.id in settings.ADMIN_IDS:
             today_games.append(game)
             continue
+
         if (
             game.starts_at - datetime.timedelta(hours=3)
         ) >= datetime.datetime.now().replace(tzinfo=pytz.UTC):
@@ -150,11 +152,47 @@ async def games_handler(message: Message) -> None:
         await message.bot.send_message(
             chat_id=message.chat.id,
             text=f"Предстоящие матчи:",
-            reply_markup=games_keyboard(today_games),
+            reply_markup=games_keyboard(
+                today_games[:5], teams_amount=5, more_games=(len(today_games) > 5)
+            ),
         )
     else:
         await message.bot.send_message(
             chat_id=message.chat.id,
+            text=f"Пока нет предстоящих матчей(",
+        )
+
+
+@dlg_router.callback_query(MoreTeamCallback.filter())
+async def more_games_handler(
+    query: CallbackQuery, callback_data: GameCallback, state: FSMContext
+) -> None:
+    games = await Game.filter(first_team_score=None).order_by("starts_at")
+    teams_amount = callback_data.teams_amount
+    teams_amount += 5
+
+    today_games = []
+    for game in games:
+        if query.message.chat.id in settings.ADMIN_IDS:
+            today_games.append(game)
+            continue
+        if (
+            game.starts_at - datetime.timedelta(hours=3)
+        ) >= datetime.datetime.now().replace(tzinfo=pytz.UTC):
+            today_games.append(game)
+
+    print(teams_amount, len(games) > teams_amount)
+    if today_games:
+        await query.message.edit_text(
+            text=f"Предстоящие матчи:",
+            reply_markup=games_keyboard(
+                today_games[:teams_amount],
+                teams_amount,
+                more_games=(len(today_games) > teams_amount),
+            ),
+        )
+    else:
+        await query.message.edit_text(
             text=f"Пока нет предстоящих матчей(",
         )
 
@@ -223,10 +261,11 @@ async def game_handler(
 
 
 @dlg_router.callback_query(CancelCallback.filter())
-async def game_handler(
+async def cancel_handler(
     query: CallbackQuery, callback_data: GameCallback, state: FSMContext
 ) -> None:
     games = await Game.filter(first_team_score=None).order_by("starts_at")
+
     today_games = []
     for game in games:
         if query.message.chat.id in settings.ADMIN_IDS:
@@ -240,12 +279,13 @@ async def game_handler(
     if today_games:
         await query.message.edit_text(
             text=f"Предстоящие матчи:",
-            reply_markup=games_keyboard(today_games),
+            reply_markup=games_keyboard(
+                today_games[:5], 5, more_games=(len(today_games) > 5)
+            ),
         )
     else:
         await query.message.edit_text(
             text=f"Пока нет предстоящих матчей(",
-            reply_markup=games_keyboard(today_games),
         )
 
 
@@ -256,7 +296,6 @@ async def process_game_score(message: Message, state: FSMContext) -> None:
         game = await Game.get(uuid=data["game_uuid"]).prefetch_related("bets__user")
         await game.set_score(score)
         await message.answer("Итоговый счёт установлен", reply_markup=home_keyboard())
-        
 
         for bet in game.bets:
             try:

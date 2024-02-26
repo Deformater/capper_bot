@@ -7,6 +7,7 @@ from callbacks import (
     ContinueCallback,
     GameCallback,
     MoreBetCallback,
+    MoreTeamCallback,
     SetGameResultCallback,
 )
 from data.models import Game
@@ -45,7 +46,7 @@ def home_keyboard():
     return builder.as_markup()
 
 
-def games_keyboard(games: list):
+def games_keyboard(games: list, teams_amount: int, more_games: bool = True):
     builder = InlineKeyboardBuilder()
 
     for game in games:
@@ -55,6 +56,9 @@ def games_keyboard(games: list):
             callback_data=GameCallback(game_uuid=game.uuid),
         )
         builder.adjust(1)
+
+    if more_games:
+        builder.attach(team_keyboard(teams_amount))
 
     return builder.as_markup()
 
@@ -181,6 +185,15 @@ def bet_history_keyboard(bets_amount):
         callback_data=MoreBetCallback(bets_amount=bets_amount),
     )
     return builder.as_markup()
+
+
+def team_keyboard(teams_amount):
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="Больше игр",
+        callback_data=MoreTeamCallback(teams_amount=teams_amount),
+    )
+    return builder
 
 
 def cancel_bet_keyboard():
