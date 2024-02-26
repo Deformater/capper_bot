@@ -121,7 +121,8 @@ async def game_handler(
 
 @dlg_router.message(Command("admin"))
 async def command_admin(message: Message, command: CommandObject) -> None:
-    if message.chat.id not in settings.ADMIN_IDS:
+    user = await User.get(tg_id=message.chat.id)
+    if not user.is_admin:
         return
 
     users = await User.all()
@@ -134,12 +135,52 @@ async def command_admin(message: Message, command: CommandObject) -> None:
                 continue
 
 
+@dlg_router.message(Command("set_admin"))
+async def command_admin(message: Message, command: CommandObject) -> None:
+    user = await User.get(tg_id=message.chat.id)
+    if not user.is_admin:
+        return
+
+    args = command.args
+    if args is not None:
+        admin_user = await User.filter(username=args).first()
+        if admin_user:
+            admin_user.is_admin = True
+            await admin_user.save()
+            await message.answer(
+                f"Пользователь {admin_user.username} успешно добавлен в администраторы"
+            )
+        else:
+            await message.answer(f"Пользователь {args} не найден")
+
+
+@dlg_router.message(Command("del_admin"))
+async def command_admin(message: Message, command: CommandObject) -> None:
+    user = await User.get(tg_id=message.chat.id)
+    if not user.is_admin:
+        return
+
+    args = command.args
+    if args is not None:
+        admin_user = await User.filter(username=args).first()
+        if admin_user:
+            admin_user.is_admin = False
+            await admin_user.save()
+            await message.answer(
+                f"Пользователь {admin_user.username} успешно удалён из администраторов"
+            )
+        else:
+            await message.answer(f"Пользователь {args} не найден")
+
+
 @dlg_router.message(F.text == "🎮Матчи")
 async def games_handler(message: Message) -> None:
     games = await Game.filter(first_team_score=None).order_by("starts_at")
+    user = await User.get(tg_id=message.chat.id)
+
     today_games = []
     for game in games:
-        if message.chat.id in settings.ADMIN_IDS:
+        if user.is_admin:
             today_games.append(game)
             continue
 
@@ -171,9 +212,11 @@ async def more_games_handler(
     teams_amount = callback_data.teams_amount
     teams_amount += 5
 
+    user = await User.get(tg_id=query.message.chat.id)
+
     today_games = []
     for game in games:
-        if query.message.chat.id in settings.ADMIN_IDS:
+        if user.is_admin:
             today_games.append(game)
             continue
         if (
@@ -181,7 +224,6 @@ async def more_games_handler(
         ) >= datetime.datetime.now().replace(tzinfo=pytz.UTC):
             today_games.append(game)
 
-    print(teams_amount, len(games) > teams_amount)
     if today_games:
         await query.message.edit_text(
             text=f"Предстоящие матчи:",
@@ -239,8 +281,9 @@ async def game_handler(
     uuid = callback_data.game_uuid
     game = await Game.get(uuid=uuid)
     await state.update_data(game_uuid=str(uuid))
+    user = await User.get(tg_id=query.message.chat.id)
 
-    if query.message.chat.id in settings.ADMIN_IDS:
+    if user.is_admin:
         result_text = "Админ панель игры:\n"
         result_text += f"{generate_game_text(game)}\n"
         result_text += "Введи итоговый счёт в формате:\n"
@@ -265,10 +308,11 @@ async def cancel_handler(
     query: CallbackQuery, callback_data: GameCallback, state: FSMContext
 ) -> None:
     games = await Game.filter(first_team_score=None).order_by("starts_at")
+    user = await User.get(tg_id=query.message.chat.id)
 
     today_games = []
     for game in games:
-        if query.message.chat.id in settings.ADMIN_IDS:
+        if user.is_admin:
             today_games.append(game)
             continue
         if (

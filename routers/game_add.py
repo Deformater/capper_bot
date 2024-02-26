@@ -39,7 +39,8 @@ class GameAdd(StatesGroup):
 async def command_admin(
     message: Message, command: CommandObject, state: FSMContext
 ) -> None:
-    if message.chat.id not in settings.ADMIN_IDS:
+    user = await User.get(tg_id=message.chat.id)
+    if not user.is_admin:
         return
 
     await state.clear()
