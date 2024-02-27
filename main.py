@@ -4,10 +4,11 @@ import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from redis.asyncio import Redis
 
-from router import dlg_router
+from router import dlg_router, interesting_games
 from routers.game_add import game_add_router
 
 from data.init import register_db, upgrade_db
@@ -37,6 +38,10 @@ async def main() -> None:
     dp.include_router(dlg_router)
     dp.include_router(game_add_router)
     bot = Bot(settings.TOKEN)
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(interesting_games, "cron", hour=8, minute=30, args=(bot,))
+    scheduler.start()
+
     await dp.start_polling(bot)
 
 

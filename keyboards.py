@@ -40,8 +40,9 @@ def home_keyboard():
     builder.button(text="🙍‍♂️Профиль")
     builder.button(text="💬Чат")
     builder.button(text="📝О боте")
+    builder.button(text="🗣Условия")
     builder.button(text="🏆Рейтинг")
-    builder.adjust(2, 2, 2)
+    builder.adjust(2, 2, 3)
 
     return builder.as_markup()
 

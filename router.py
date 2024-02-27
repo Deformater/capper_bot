@@ -106,17 +106,7 @@ async def game_handler(
     await user.save()
 
     text = await generate_profile_text(user)
-    if user.is_subscripe:
-        await query.message.answer(
-            text, reply_markup=home_keyboard(), parse_mode="HTML"
-        )
-    else:
-        await query.message.answer(
-            f'Вы не подписаны на <a href="{settings.GROUP_NAME}">канал</a>, подпишитесь и нажмите продолжить',
-            reply_markup=ReplyKeyboardRemove(),
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-        )
+    await query.message.answer(text, reply_markup=home_keyboard(), parse_mode="HTML")
 
 
 @dlg_router.message(Command("admin"))
@@ -587,6 +577,19 @@ async def bot_info_handler(message: Message) -> None:
     )
 
 
+@dlg_router.message(F.text == "🗣Условия")
+async def bot_info_handler(message: Message) -> None:
+    text = (
+        f"""1️⃣ Подписаться на наш канал <a href="{settings.GROUP_NAME}">BetPulse</a>"""
+    )
+    await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=home_keyboard(),
+        disable_web_page_preview=True,
+    )
+
+
 @dlg_router.message(F.text == "💬Чат")
 async def chat_handler(message: Message):
     await message.bot.send_message(
@@ -594,3 +597,29 @@ async def chat_handler(message: Message):
         text="Нажмите на кнопку ниже, чтобы присоединиться к нашему чату:",
         reply_markup=chat_link_keyboard(),
     )
+
+
+async def interesting_games(bot):
+    games = await Game.filter(
+        first_team_score=None,
+        starts_at__gte=datetime.datetime.now() + datetime.timedelta(hours=3),
+        hype__gt=1,
+    ).order_by("starts_at")
+    today_games = []
+    result_text = "Интересные матчи сегодня:"
+    for game in games:
+        if game.starts_at.date() == datetime.date.today():
+            today_games.append(game)
+
+    users = await User.all()
+    for user in users:
+        try:
+            await bot.send_message(
+                user.tg_id,
+                result_text,
+                reply_markup=games_keyboard(
+                    today_games, teams_amount=5, more_games=True
+                ),
+            )
+        except TelegramForbiddenError:
+            continue

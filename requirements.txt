@@ -4,3 +4,4 @@ aerich
 tortoise
 asyncpg
 redis
+apscheduler
