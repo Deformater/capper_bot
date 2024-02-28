@@ -24,7 +24,8 @@ def team_info_validate(info: str) -> bool:
 
 def start_at_validate(date: str) -> datetime | None:
     try:
-        date = datetime.strptime(date, "%H:%M-%d.%m")
+        now_year = datetime.now().year
+        date = datetime.strptime(f"{date}/{now_year}", "%H:%M-%d.%m/%Y")
         return date.replace(year=2024)
     except:
         return None
