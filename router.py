@@ -265,7 +265,6 @@ async def game_handler(
 ) -> None:
     uuid = callback_data.game_uuid
     game = await Game.get(uuid=uuid)
-    await state.update_data(game_uuid=str(uuid))
     user = await User.get(tg_id=query.message.chat.id)
 
     if user.is_admin:
@@ -276,12 +275,23 @@ async def game_handler(
         await query.bot.send_message(
             chat_id=query.message.chat.id,
             text=result_text,
-            reply_markup=cancel_bet_keyboard(),
         )
         await state.set_state(GameAdmin.score)
         await state.update_data(game_uuid=str(uuid))
 
         return
+
+    if (
+        game.starts_at - datetime.timedelta(hours=3)
+    ) <= datetime.datetime.now().replace(tzinfo=pytz.UTC):
+        await query.bot.send_message(
+            chat_id=query.message.chat.id,
+            text="На этот матч больше нельзя поставить(",
+            reply_markup=cancel_bet_keyboard(),
+        )
+        return
+
+    await state.update_data(game_uuid=str(uuid))
 
     result_text = "Хочешь сделать ставку?\n\n"
     result_text += generate_game_text(game)
