@@ -275,6 +275,7 @@ async def game_handler(
         await query.bot.send_message(
             chat_id=query.message.chat.id,
             text=result_text,
+            reply_markup=cancel_bet_keyboard(),
         )
         await state.set_state(GameAdmin.score)
         await state.update_data(game_uuid=str(uuid))
@@ -469,8 +470,8 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
             await message.answer("У вас недостаточно средств")
             return
 
-        if bet_size > 1000:
-            await message.answer("Максимальная ставка - 1000💵")
+        if bet_size > 5000:
+            await message.answer("Максимальная ставка - 5000💵")
             return
 
         team_name, bet_coefficient = data["bet_content"].split(" - ")
