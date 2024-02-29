@@ -79,16 +79,12 @@ def base_bet_keyboard(game: Game):
     first_team_info = f"{game.first_team_name} - {game.first_team_coefficient}"
     builder.button(
         text=first_team_info,
-        callback_data=BetCallback(
-            game_uuid=game.uuid, content=first_team_info, bet_type="WIN"
-        ),
+        callback_data=BetCallback(game_uuid=game.uuid, content=1, bet_type="WIN"),
     )
     second_team_info = f"{game.second_team_name} - {game.second_team_coefficient}"
     builder.button(
         text=second_team_info,
-        callback_data=BetCallback(
-            game_uuid=game.uuid, content=second_team_info, bet_type="WIN"
-        ),
+        callback_data=BetCallback(game_uuid=game.uuid, content=2, bet_type="WIN"),
     )
     builder.adjust(2)
 
@@ -100,19 +96,17 @@ def bo2_bet_keyboard(game: Game):
     first_team_info = f"{game.first_team_name}"
     builder.button(
         text=first_team_info,
-        callback_data=Bo2BetCallback(game_uuid=game.uuid, content=first_team_info),
+        callback_data=Bo2BetCallback(game_uuid=game.uuid, content=1),
     )
     draw_info = f"Ничья - {game.draw_coefficient}"
     builder.button(
         text=draw_info,
-        callback_data=BetCallback(
-            game_uuid=game.uuid, content=draw_info, bet_type="DRAW"
-        ),
+        callback_data=BetCallback(game_uuid=game.uuid, content=3, bet_type="DRAW"),
     )
     second_team_info = f"{game.second_team_name}"
     builder.button(
         text=second_team_info,
-        callback_data=Bo2BetCallback(game_uuid=game.uuid, content=second_team_info),
+        callback_data=Bo2BetCallback(game_uuid=game.uuid, content=2),
     )
     builder.adjust(3)
 

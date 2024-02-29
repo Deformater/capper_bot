@@ -16,13 +16,13 @@ class GameCallback(CallbackData, prefix="game"):
 
 class BetCallback(CallbackData, prefix="bet"):
     game_uuid: UUID4
-    content: str = None
+    content: int
     bet_type: str = None
 
 
 class Bo2BetCallback(CallbackData, prefix="bo2_bet"):
     game_uuid: UUID4
-    content: str
+    content: int
 
 
 class Bo2TeamBetCallback(CallbackData, prefix="bo2_team"):

@@ -365,21 +365,29 @@ async def bet_handler(
 
     game = await Game.get(uuid=uuid)
 
+    if callback_data.content == 1:
+        content = f"{game.first_team_name} - {game.first_team_coefficient}"
+    elif callback_data.content == 2:
+        content = f"{game.second_team_name} - {game.second_team_coefficient}"
+    else:
+        content = f"Ничья - {game.draw_coefficient}"
+
     result_text = "Хочешь сделать ставку?\n\n"
     result_text += generate_game_text(game) + "\n"
     if callback_data.bet_type == "DRAW":
-        result_text += f"Ставка на {callback_data.content}\n\n"
+        result_text += f"Ставка на Ничья - {game.draw_coefficient}\n\n"
     else:
-        result_text += f"Ставка на победу {callback_data.content}\n\n"
+        result_text += f"Ставка на победу {content}\n\n"
 
     user = await User.get(tg_id=query.message.chat.id)
 
     result_text += f"Баланс {user.balance}💵\n"
     result_text += f"Введи сумму ставки:"
+
     await state.set_state(Form.bet)
     await state.update_data(
         game_uuid=str(uuid),
-        bet_content=callback_data.content,
+        bet_content=content,
         bet_type=callback_data.bet_type,
     )
 
@@ -398,11 +406,16 @@ async def bet_handler(
 
     game = await Game.get(uuid=uuid)
 
-    await state.update_data(team_name=callback_data.content)
+    if callback_data.content == 1:
+        team_name = game.first_team_name
+    else:
+        team_name = game.second_team_name
 
-    result_text = f"Выбрана комнда {callback_data.content}\n"
+    await state.update_data(team_name=team_name)
+
+    result_text = f"Выбрана комнда {team_name}\n"
     result_text += "Выберите тип ставки:"
-    if callback_data.content == game.first_team_name:
+    if callback_data.content == 1:
         win_coeff, double_chance_coeff = (
             game.first_team_coefficient,
             game.first_team_double_chance,
