@@ -94,7 +94,7 @@ async def command_start(message: Message, state: FSMContext) -> None:
 
 @dlg_router.callback_query(ContinueCallback.filter())
 async def game_handler(
-    query: CallbackQuery, callback_data: GameCallback, state: FSMContext
+    query: CallbackQuery, callback_data: ContinueCallback, state: FSMContext
 ) -> None:
     user = await User.get(tg_id=query.message.chat.id)
     user_channel_status = await query.bot.get_chat_member(
@@ -330,6 +330,34 @@ async def cancel_handler(
         await query.message.edit_text(
             text=f"Пока нет предстоящих матчей(",
         )
+
+
+@dlg_router.message(Command("change_score"))
+async def game_handler(
+    message: Message, command: CommandObject, state: FSMContext
+) -> None:
+    user = await User.get(tg_id=message.chat.id)
+
+    if not user.is_admin:
+        return
+    if len(command.args.split()) != 1:
+        return
+
+    uuid = command.args
+    game = await Game.get_or_none(uuid=uuid)
+    if game is None:
+        return
+
+    result_text = "Админ панель игры:\n"
+    result_text += f"{generate_game_text(game)}\n"
+    result_text += "Введи итоговый счёт в формате:\n"
+    result_text += "1:2"
+    await message.answer(
+        text=result_text,
+        reply_markup=cancel_bet_keyboard(),
+    )
+    await state.set_state(GameAdmin.score)
+    await state.update_data(game_uuid=str(uuid))
 
 
 @dlg_router.message(GameAdmin.score)

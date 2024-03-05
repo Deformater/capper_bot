@@ -122,6 +122,18 @@ async def generate_bets_history_text(bets: list[Bet]) -> str:
                 result_text += f"Ничья {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
             case BetType.DOEBLE_CHANCE:
                 result_text += f"Двойной шанс {bet.team_name} {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+            case BetType.FORA_PLUS:
+                result_text += f"Фора +1.5 {bet.team_name} {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+            case BetType.FORA_MINUS:
+                result_text += f"Фора -1.5 {bet.team_name} {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+            case BetType.TOTAL_BIGGER:
+                result_text += (
+                    f"Тотал 2.5 Б - {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+                )
+            case BetType.TOTAL_LESS:
+                result_text += (
+                    f"Тотал 2.5 М - {bet.bet_coefficient}⚔️Cумма: {bet.size}\n"
+                )
 
         if bet.result is None:
             result_text += f"Результатов ещё нет("

@@ -64,6 +64,10 @@ class Bet(models.Model):
     created_at = fields.DatetimeField(auto_now=True)
 
     async def set_result(self, result: bool) -> None:
+        if not (self.result is None):
+            self.user.balance -= self.balance_change
+            if self.result:
+                self.user.success_bet_count -= 1
         if result:
             self.result = True
             self.balance_change = round(self.size * self.bet_coefficient - self.size, 2)
