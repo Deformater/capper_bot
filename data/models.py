@@ -65,8 +65,8 @@ class Bet(models.Model):
 
     async def set_result(self, result: bool) -> None:
         if not (self.result is None):
-            self.user.balance -= self.balance_change
             if self.result:
+                self.user.balance -= self.balance_change + self.size
                 self.user.success_bet_count -= 1
         if result:
             self.result = True
