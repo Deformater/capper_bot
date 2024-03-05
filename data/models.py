@@ -131,14 +131,14 @@ class Game(models.Model):
                         await bet.set_result(score[1] > 0)
                 case BetType.FORA_PLUS:
                     if bet.team_name == self.first_team_name:
-                        await bet.set_result(score[0] - score[1] > 1.5)
+                        await bet.set_result(score[0] > 0)
                     else:
-                        await bet.set_result(score[1] - score[0] > 1.5)
+                        await bet.set_result(score[1] > 0)
                 case BetType.FORA_MINUS:
                     if bet.team_name == self.first_team_name:
-                        await bet.set_result(score[0] - score[1] < 1.5)
+                        await bet.set_result(score[1] == 0)
                     else:
-                        await bet.set_result(score[1] - score[0] < 1.5)
+                        await bet.set_result(score[0] == 0)
                 case BetType.TOTAL_BIGGER:
                     await bet.set_result(score[0] + score[1] > 2.5)
                 case BetType.TOTAL_LESS:
