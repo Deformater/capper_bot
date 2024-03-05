@@ -41,6 +41,10 @@ class BetType(Enum):
     WIN = "WIN"
     DRAW = "DRAW"
     DOEBLE_CHANCE = "D_CH"
+    FORA_PLUS = "F_P"
+    FORA_MINUS = "F_M"
+    TOTAL_BIGGER = "T_B"
+    TOTAL_LESS = "T_L"
 
 
 class Bet(models.Model):
@@ -81,6 +85,12 @@ class Game(models.Model):
     first_team_name = fields.TextField(null=False)
     second_team_name = fields.TextField(null=False)
     first_team_coefficient = fields.FloatField(null=False)
+    first_team_fora_plus_coefficient = fields.FloatField(null=True)
+    second_team_fora_plus_coefficient = fields.FloatField(null=True)
+    first_team_fora_minus_coefficient = fields.FloatField(null=True)
+    second_team_fora_minus_coefficient = fields.FloatField(null=True)
+    total_bigger_coefficient = fields.FloatField(null=True)
+    total_less_coefficient = fields.FloatField(null=True)
     first_team_double_chance = fields.FloatField(null=True)
     second_team_coefficient = fields.FloatField(null=False)
     second_team_double_chance = fields.FloatField(null=True)
@@ -115,6 +125,20 @@ class Game(models.Model):
                         await bet.set_result(score[0] > 0)
                     else:
                         await bet.set_result(score[1] > 0)
+                case BetType.FORA_PLUS:
+                    if bet.team_name == self.first_team_name:
+                        await bet.set_result(score[0] - score[1] > 1.5)
+                    else:
+                        await bet.set_result(score[1] - score[0] > 1.5)
+                case BetType.FORA_MINUS:
+                    if bet.team_name == self.first_team_name:
+                        await bet.set_result(score[0] - score[1] < 1.5)
+                    else:
+                        await bet.set_result(score[1] - score[0] < 1.5)
+                case BetType.TOTAL_BIGGER:
+                    await bet.set_result(score[0] + score[1] > 2.5)
+                case BetType.TOTAL_LESS:
+                    await bet.set_result(score[0] + score[1] < 2.5)
 
         await self.save()
 

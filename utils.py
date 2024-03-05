@@ -13,10 +13,19 @@ def validate_bet_size(bet_size: str) -> float | None:
         return None
 
 
+def validate_total(total: str) -> bool:
+    total_list = total.split("-")
+    return (
+        (len(total_list) == 2)
+        and (validate_bet_size(total_list[0]) is not None)
+        and (validate_bet_size(total_list[1]) is not None)
+    )
+
+
 def team_info_validate(info: str) -> bool:
     info_list = info.split("-")
     return (
-        (len(info_list) == 2 or len(info_list) == 3)
+        (len(info_list) == 2 or len(info_list) == 3 or len(info_list) == 4)
         and (not info_list[0].isdigit())
         and (validate_bet_size(info_list[1]) is not None)
     )

@@ -22,6 +22,7 @@ from keyboards import (
     bet_keyboard,
     bo2_bet_keyboard,
     bo2_team_bet_keyboard,
+    bo3_team_bet_keyboard,
     cancel_bet_keyboard,
     continue_keyboard,
     home_keyboard,
@@ -32,6 +33,8 @@ from callbacks import (
     BetCallback,
     Bo2BetCallback,
     Bo2TeamBetCallback,
+    Bo3BetCallback,
+    Bo3TeamBetCallback,
     CancelCallback,
     ContinueCallback,
     GameCallback,
@@ -369,13 +372,96 @@ async def bet_handler(
         content = f"{game.first_team_name} - {game.first_team_coefficient}"
     elif callback_data.content == 2:
         content = f"{game.second_team_name} - {game.second_team_coefficient}"
-    else:
+    elif callback_data.content == 3:
         content = f"Ничья - {game.draw_coefficient}"
+    elif callback_data.content == 4:
+        content = f"Тотал 2.5 Б - {game.total_bigger_coefficient}"
+    elif callback_data.content == 5:
+        content = f"Тотал 2.5 М - {game.total_less_coefficient}"
 
     result_text = "Хочешь сделать ставку?\n\n"
     result_text += generate_game_text(game) + "\n"
-    if callback_data.bet_type == "DRAW":
-        result_text += f"Ставка на Ничья - {game.draw_coefficient}\n\n"
+    if callback_data.bet_type != "WIN":
+        result_text += f"Ставка на {content}\n\n"
+    else:
+        result_text += f"Ставка на победу {content}\n\n"
+
+    user = await User.get(tg_id=query.message.chat.id)
+
+    result_text += f"Баланс {user.balance}💵\n"
+    result_text += f"Введи сумму ставки:"
+
+    await state.set_state(Form.bet)
+    await state.update_data(
+        game_uuid=str(uuid),
+        bet_content=content,
+        bet_type=callback_data.bet_type,
+    )
+
+    await query.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=result_text,
+        reply_markup=cancel_bet_keyboard(),
+    )
+
+
+@dlg_router.callback_query(Bo3BetCallback.filter())
+async def bet_handler(
+    query: CallbackQuery, callback_data: Bo3BetCallback, state: FSMContext
+) -> None:
+    uuid = callback_data.game_uuid
+
+    game = await Game.get(uuid=uuid)
+
+    if callback_data.content == 1:
+        team_name = game.first_team_name
+    else:
+        team_name = game.second_team_name
+
+    await state.update_data(team_name=team_name)
+
+    result_text = f"Выбрана комнда {team_name}\n"
+    result_text += "Выберите тип ставки:"
+    if callback_data.content == 1:
+        (win_coeff, fora_plus_coefficient, fora_minus_coefficient,) = (
+            game.first_team_coefficient,
+            game.first_team_fora_plus_coefficient,
+            game.first_team_fora_minus_coefficient,
+        )
+    else:
+        (win_coeff, fora_plus_coefficient, fora_minus_coefficient,) = (
+            game.second_team_coefficient,
+            game.second_team_fora_plus_coefficient,
+            game.second_team_fora_minus_coefficient,
+        )
+    await query.message.edit_text(
+        text=result_text,
+        reply_markup=bo3_team_bet_keyboard(
+            game,
+            win_coeff,
+            fora_plus_coefficient,
+            fora_minus_coefficient,
+        ),
+    )
+
+
+@dlg_router.callback_query(Bo3TeamBetCallback.filter())
+async def bo2_team_bet_handler(
+    query: CallbackQuery, callback_data: Bo3TeamBetCallback, state: FSMContext
+) -> None:
+    data = await state.get_data()
+    team_name = data["team_name"]
+    uuid = callback_data.game_uuid
+
+    game = await Game.get(uuid=uuid)
+    content = f"{team_name} - {callback_data.bet_coefficient}"
+
+    result_text = "Хочешь сделать ставку?\n\n"
+    result_text += generate_game_text(game) + "\n"
+    if callback_data.bet_type == "F_P":
+        result_text += f"Ставка на фору +1.5 {content}\n\n"
+    elif callback_data.bet_type == "F_M":
+        result_text += f"Ставка на фору -1.5 {content}\n\n"
     else:
         result_text += f"Ставка на победу {content}\n\n"
 
@@ -483,9 +569,9 @@ async def process_bet_size(message: Message, state: FSMContext) -> None:
             await message.answer("У вас недостаточно средств")
             return
 
-        if bet_size > 5000:
-            await message.answer("Максимальная ставка - 5000💵")
-            return
+        # if bet_size > 5000:
+        #     await message.answer("Максимальная ставка - 5000💵")
+        #     return
 
         team_name, bet_coefficient = data["bet_content"].split(" - ")
         if team_name == "Ничья":

@@ -3,6 +3,8 @@ from callbacks import (
     BetCallback,
     Bo2BetCallback,
     Bo2TeamBetCallback,
+    Bo3BetCallback,
+    Bo3TeamBetCallback,
     CancelCallback,
     ContinueCallback,
     GameCallback,
@@ -67,6 +69,8 @@ def games_keyboard(games: list, teams_amount: int, more_games: bool = True):
 def bet_keyboard(game: Game):
     if game.format == "bo2":
         builder = bo2_bet_keyboard(game)
+    elif game.format == "bo3":
+        builder = bo3_bet_keyboard(game)
     else:
         builder = base_bet_keyboard(game)
 
@@ -129,6 +133,70 @@ def bo2_team_bet_keyboard(
             game_uuid=game.uuid,
             bet_type="D_CH",
             bet_coefficient=double_chance_coefficient,
+        ),
+    )
+    builder.adjust(2)
+    builder.attach(base_keyboard())
+
+    return builder.as_markup()
+
+
+def bo3_bet_keyboard(game: Game):
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=f"Тотал 2.5 Б - {game.total_bigger_coefficient}",
+        callback_data=BetCallback(
+            game_uuid=game.uuid,
+            bet_type="T_B",
+            content=4,
+        ),
+    )
+    builder.button(
+        text=f"Тотал 2.5 М - {game.total_less_coefficient}",
+        callback_data=BetCallback(game_uuid=game.uuid, bet_type="T_L", content=5),
+    )
+    first_team_info = f"{game.first_team_name}"
+    builder.button(
+        text=first_team_info,
+        callback_data=Bo3BetCallback(game_uuid=game.uuid, content=1),
+    )
+    second_team_info = f"{game.second_team_name}"
+    builder.button(
+        text=second_team_info,
+        callback_data=Bo3BetCallback(game_uuid=game.uuid, content=2),
+    )
+    builder.adjust(2)
+
+    return builder
+
+
+def bo3_team_bet_keyboard(
+    game: Game,
+    win_coefficient: float,
+    fora_plus_coefficient: float,
+    fora_minus_coefficient: float,
+):
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=f"Фора +1.5 - {fora_plus_coefficient}",
+        callback_data=Bo3TeamBetCallback(
+            game_uuid=game.uuid,
+            bet_type="F_P",
+            bet_coefficient=fora_plus_coefficient,
+        ),
+    )
+    builder.button(
+        text=f"Фора -1.5 - {fora_minus_coefficient}",
+        callback_data=Bo3TeamBetCallback(
+            game_uuid=game.uuid,
+            bet_type="F_M",
+            bet_coefficient=fora_minus_coefficient,
+        ),
+    )
+    builder.button(
+        text=f"Победа - {win_coefficient}",
+        callback_data=Bo3TeamBetCallback(
+            game_uuid=game.uuid, bet_type="WIN", bet_coefficient=win_coefficient
         ),
     )
     builder.adjust(2)

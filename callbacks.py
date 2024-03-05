@@ -31,6 +31,17 @@ class Bo2TeamBetCallback(CallbackData, prefix="bo2_team"):
     bet_coefficient: float
 
 
+class Bo3BetCallback(CallbackData, prefix="bo3_bet"):
+    game_uuid: UUID4
+    content: int
+
+
+class Bo3TeamBetCallback(CallbackData, prefix="bo3_team"):
+    game_uuid: UUID4
+    bet_type: str
+    bet_coefficient: float
+
+
 class MoreBetCallback(CallbackData, prefix="more_bet"):
     bets_amount: int
 
